@@ -1,0 +1,195 @@
+:root {
+  /* 暮色调色板（取自专辑封面：薄暮紫 / 深靛 / 月白 / 光环淡金） */
+  --c-deep: #101024;
+  --c-dusk: #8b8fc7;
+  --c-mist: #b9bce0;
+  --c-ink: #eef0ff;
+  --c-halo: #f4ecc8;
+
+  --font-jp: 'Shippori Mincho', 'Noto Serif SC', serif;
+  --font-zh: 'Noto Serif SC', 'Shippori Mincho', serif;
+  --font-kr: 'Nanum Myeongjo', serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--c-deep);
+  color: var(--c-ink);
+  overflow: hidden;
+  font-family: var(--font-zh);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app { position: fixed; inset: 0; }
+
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---- 文字层 ---- */
+#type-layer {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#ghosts, #lines { position: absolute; inset: 0; }
+
+.lyric-line {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  white-space: nowrap;
+}
+.lyric-line .jp {
+  font-family: var(--font-jp);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 4.2vw, 3.4rem);
+  letter-spacing: 0.14em;
+  color: var(--c-ink);
+  text-shadow: 0 0 24px rgba(139, 143, 199, 0.45);
+}
+.lyric-line .jp .ch { display: inline-block; will-change: transform, opacity, filter; }
+.lyric-line .zh {
+  margin-top: 1.1em;
+  font-family: var(--font-zh);
+  font-size: clamp(0.8rem, 1.6vw, 1.15rem);
+  letter-spacing: 0.32em;
+  color: var(--c-mist);
+  opacity: 0.72;
+}
+
+/* 残响层：消逝的歌词留下的回声 */
+#ghosts .lyric-line { filter: blur(1px); }
+
+/* 竖排变体（cut 可自由取用） */
+.lyric-line.vertical {
+  writing-mode: vertical-rl;
+  white-space: normal;
+}
+
+/* ---- 电影层 ---- */
+#cine-layer { position: absolute; inset: 0; pointer-events: none; }
+#cine-layer .bar {
+  position: absolute; left: 0; right: 0; height: 0;
+  background: #000;
+  transition: height 1.2s cubic-bezier(0.6, 0, 0.2, 1);
+}
+#cine-layer .bar.top { top: 0; }
+#cine-layer .bar.bottom { bottom: 0; }
+#veil {
+  position: absolute; inset: 0;
+  background: #000;
+  opacity: 1;
+  pointer-events: none;
+}
+#flash {
+  position: absolute; inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- 入场仪式 ---- */
+#gate {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 50% 62%, rgba(38, 38, 74, 0.92), rgba(10, 10, 22, 0.98));
+  z-index: 30;
+  transition: opacity 1.6s ease;
+}
+#gate.leaving { opacity: 0; pointer-events: none; }
+.gate-inner { text-align: center; padding: 2rem; }
+.gate-kr {
+  font-family: var(--font-kr);
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  letter-spacing: 0.65em;
+  color: var(--c-dusk);
+  margin-bottom: 0.9rem;
+}
+.gate-jp {
+  font-family: var(--font-jp);
+  font-weight: 400;
+  font-size: clamp(1.9rem, 5vw, 3.6rem);
+  letter-spacing: 0.22em;
+  color: var(--c-ink);
+}
+.gate-en {
+  font-family: var(--font-jp);
+  font-style: italic;
+  font-size: clamp(0.75rem, 1.4vw, 0.95rem);
+  letter-spacing: 0.42em;
+  color: var(--c-mist);
+  opacity: 0.65;
+  margin-top: 0.7rem;
+}
+
+#gate-halo {
+  position: relative;
+  width: 108px; height: 108px;
+  margin: 2.6rem auto 1.4rem;
+  display: block;
+  background: none; border: 0; cursor: pointer;
+}
+#gate-halo .ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--c-halo);
+  transform: rotateX(58deg) rotateZ(-16deg);
+  box-shadow:
+    0 0 22px rgba(244, 236, 200, 0.55),
+    inset 0 0 18px rgba(244, 236, 200, 0.35);
+  animation: halo-breathe 4.2s ease-in-out infinite;
+}
+#gate-halo:hover .ring { animation-duration: 2.2s; }
+@keyframes halo-breathe {
+  0%, 100% { opacity: 0.75; scale: 1; }
+  50% { opacity: 1; scale: 1.06; }
+}
+
+.gate-hint {
+  font-size: 0.82rem;
+  letter-spacing: 0.28em;
+  color: var(--c-mist);
+  opacity: 0.8;
+  min-height: 1.4em;
+}
+#gate-actions { margin-top: 1.2rem; display: flex; gap: 0.9rem; justify-content: center; }
+.gate-btn {
+  display: inline-block;
+  padding: 0.5rem 1.2rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  color: var(--c-ink);
+  border: 1px solid rgba(185, 188, 224, 0.45);
+  border-radius: 2px;
+  background: rgba(139, 143, 199, 0.08);
+  cursor: pointer;
+  font-family: inherit;
+}
+.gate-btn:hover { background: rgba(139, 143, 199, 0.22); }
+.gate-btn.subtle { border-color: rgba(185, 188, 224, 0.2); color: var(--c-mist); }
+.gate-credit {
+  margin-top: 2.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  color: var(--c-dusk);
+  opacity: 0.55;
+}
+
+/* ---- 创作 HUD ---- */
+#hud {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 40;
+  padding: 10px 14px 12px;
+  background: linear-gradient(transparent, rgba(6, 6, 14, 0.85));
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--c-mist);
+  display: flex; flex-direction: column; gap: 6px;
+}
+#hud[hidden] { display: none; }
+#hud .row { display: flex; align-items: center; gap: 14px; }
+#hud input[type='range'] { flex: 1; accent-color: var(--c-dusk); height: 4px; }
+#hud .cuts { color: var(--c-halo); }
+#hud .keys { opacity: 0.55; }

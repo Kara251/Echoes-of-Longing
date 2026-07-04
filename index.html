@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101024" />
+  <title>동경의 잔향 — Echoes of Longing</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='50' rx='36' ry='28' fill='none' stroke='%23f4ecc8' stroke-width='6' transform='rotate(-18 50 50)'/></svg>" />
+</head>
+<body>
+  <div id="app">
+    <!-- 舞台：WebGL 层 -->
+    <canvas id="gl"></canvas>
+
+    <!-- 舞台：文字层（歌词排演的主战场；#ghosts 承载“残响”） -->
+    <div id="type-layer">
+      <div id="ghosts"></div>
+      <div id="lines"></div>
+    </div>
+
+    <!-- 舞台：电影层（letterbox / 闪帧 / 黑场幕布） -->
+    <div id="cine-layer">
+      <div class="bar top"></div>
+      <div class="bar bottom"></div>
+      <div id="veil"></div>
+      <div id="flash"></div>
+    </div>
+
+    <!-- 入场仪式：浏览器音频手势 + 音源选择 -->
+    <div id="gate">
+      <div class="gate-inner">
+        <p class="gate-kr">동경의 잔향</p>
+        <h1 class="gate-jp">憧れの残響</h1>
+        <p class="gate-en">Echoes of Longing</p>
+        <button id="gate-halo" aria-label="开始"><span class="ring"></span></button>
+        <p id="gate-hint" class="gate-hint">正在寻找音源…</p>
+        <div id="gate-actions" hidden>
+          <label class="gate-btn">选择本地音源<input id="gate-file" type="file" accept="audio/*" hidden /></label>
+          <button id="gate-silent" class="gate-btn subtle">静默排演模式</button>
+        </div>
+        <p class="gate-credit">Mitsukiyo × 夕野ヨシミ（IOSYS）× DAZBEE ・ Blue Archive Ex.「Decagrammaton」ED</p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
