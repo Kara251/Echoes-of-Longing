@@ -11,7 +11,9 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-音源与图片素材放入 `public/assets/`（不入库，见 [public/assets/README.md](public/assets/README.md)）。没有任何素材也可以完整空放整场（静默排演模式）。
+音源与图片素材放入 `public/assets/`（放置约定见 [public/assets/README.md](public/assets/README.md)）。没有任何素材也可以完整空放整场（静默排演模式）。
+
+移动端竖屏时全屏显示「请横屏观看」遮罩并暂停演出，转为横屏自动恢复；桌面端窄窗口不受影响。
 
 ### 创作 HUD 与调试参数
 
@@ -34,7 +36,7 @@ WebGL 层   Three.js 场景（海面 / 光环 / 粒子 / 图像平面）
 电影层     letterbox / 闪帧 / 黑场幕布
 ```
 
-- `src/core/` — 引擎四件套：`clock`（主时钟，无音频可自由走）、`audio`（音源加载 + bass/mid/high/beat 实时分析）、`director`（cut 生命周期调度，区间可重叠）、`stage`（三层舞台）；以及 `type`（逐字排印与残响工具）、`hud`（创作工作台）。
+- `src/core/` — 引擎四件套：`clock`（主时钟，无音频可自由走）、`audio`（音源加载 + bass/mid/high/beat 实时分析）、`director`（cut 生命周期调度，区间可重叠）、`stage`（三层舞台）；以及 `type`（逐字排印与残响工具）、`hud`（创作工作台）、`orientation`（移动端横屏引导）。
 - `src/fx/` — 共享演出组件：`halo`（呼吸 / 涟漪 / 碎裂）、`ocean`（暮色海面）、`grain`（胶片后期）、`imagePlane`（任意素材的视差 / 溶解 / RGB 分离管线）、`textParticles`（文字粒子聚散）。
 - `src/cuts/` — 每卡一个文件。契约见 `base.js`：`init → enter → update(p, t, dt, audio) → exit → dispose`，`enter` 必须支持从任意时间点 seek 进入。`demo/` 下为演示卡，将被正式演出替换。
 - `src/data/` — `lyrics.js`（歌词原料表，待填入官方词与译文）、`timeline.js`（分镜表）。
@@ -64,6 +66,4 @@ WebGL 层   Three.js 场景（海面 / 光环 / 粒子 / 图像平面）
 
 3. **自定义域名** → 添加 `lyrics.kara251.com` → Cloudflare 会自动在 DNS 加 CNAME 记录
 
-配置完成后，每次推送到 `main` 分支 Cloudflare Pages 自动构建并部署，通常 1 分钟内生效。
-
-线上环境不含受版权素材（`public/assets/` 已 gitignore），页面自动以纯代码视觉运行。
+配置完成后，每次推送到 `main` 分支 Cloudflare Pages 自动构建并部署，通常 1 分钟内生效。`public/assets/` 中的素材随仓库提交并参与线上构建。

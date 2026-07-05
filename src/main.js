@@ -9,6 +9,7 @@ import { MasterClock } from './core/clock.js';
 import { AudioEngine } from './core/audio.js';
 import { Director } from './core/director.js';
 import { Hud } from './core/hud.js';
+import { initRotateGate } from './core/orientation.js';
 import { SONG } from './data/lyrics.js';
 import { buildTimeline } from './data/timeline.js';
 
@@ -22,6 +23,9 @@ const audio = new AudioEngine();
 const clock = new MasterClock(SONG.duration);
 const director = new Director({ stage, clock, audio });
 clock.onSeek((t) => director.handleSeek(t));
+
+// 横屏引导尽早挂载（在字体与素材加载之前即可遮罩）
+initRotateGate({ clock });
 
 // 字体就绪后再装载导演（文字粒子等需要栅格化字体）
 await document.fonts.ready;

@@ -1,9 +1,3 @@
 node_modules/
 dist/
 .DS_Store
-
-# 本地素材（音频/图片/手写素材）不进入公开仓库，见 public/assets/README.md
-public/assets/**
-!public/assets/README.md
-!public/assets/audio/.gitkeep
-!public/assets/img/.gitkeep

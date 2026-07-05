@@ -177,6 +177,45 @@ html, body {
   opacity: 0.55;
 }
 
+/* ---- 横屏引导（移动端竖屏遮罩） ---- */
+#rotate-gate {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(10, 10, 22, 0.97);
+  z-index: 50;
+}
+#rotate-gate[hidden] { display: none; }
+.rotate-inner { text-align: center; padding: 2rem; }
+.rotate-phone {
+  display: block;
+  width: 30px; height: 52px;
+  margin: 0 auto 1.8rem;
+  border: 2px solid var(--c-mist);
+  border-radius: 6px;
+  animation: rotate-phone 3s ease-in-out infinite;
+}
+@keyframes rotate-phone {
+  0% { transform: rotate(0deg); opacity: 0; }
+  18% { transform: rotate(0deg); opacity: 0.9; }
+  30% { transform: rotate(0deg); }
+  62% { transform: rotate(90deg); }
+  85% { transform: rotate(90deg); opacity: 0.9; }
+  100% { transform: rotate(90deg); opacity: 0; }
+}
+.rotate-title {
+  font-family: var(--font-zh);
+  font-size: 1.05rem;
+  letter-spacing: 0.42em;
+  color: var(--c-ink);
+}
+.rotate-sub {
+  margin-top: 0.8rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  color: var(--c-mist);
+  opacity: 0.65;
+}
+
 /* ---- 创作 HUD ---- */
 #hud {
   position: absolute; left: 0; right: 0; bottom: 0;
