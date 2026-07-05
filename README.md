@@ -46,6 +46,24 @@ WebGL 层   Three.js 场景（海面 / 光环 / 粒子 / 图像平面）
 3. 在 `data/timeline.js` 挂上这一卡
 4. 用 HUD 的 `?t=` 与 `[` `]` 反复打磨这一卡，直到满意
 
-## 部署
+## 部署（Cloudflare Pages）
 
-推送到 `main` 后由 GitHub Actions 构建并发布到 GitHub Pages（需在仓库设置中将 Pages 来源设为 "GitHub Actions"）。线上环境不含受版权素材，页面自动以纯代码视觉运行。
+本项目部署到 **`lyrics.kara251.com`**，托管在 Cloudflare Pages 上。
+
+### 在 Cloudflare 控制台一次性配置
+
+1. **创建 Pages 项目** → 连接 GitHub 仓库 `Kara251/Echoes-of-Longing`
+2. **构建设置**
+
+   | 字段 | 值 |
+   | --- | --- |
+   | Framework preset | None |
+   | Build command | `npm run build` |
+   | Build output directory | `dist` |
+   | Node.js version | 22 |
+
+3. **自定义域名** → 添加 `lyrics.kara251.com` → Cloudflare 会自动在 DNS 加 CNAME 记录
+
+配置完成后，每次推送到 `main` 分支 Cloudflare Pages 自动构建并部署，通常 1 分钟内生效。
+
+线上环境不含受版权素材（`public/assets/` 已 gitignore），页面自动以纯代码视觉运行。
