@@ -10,6 +10,7 @@ import { AudioEngine } from './core/audio.js';
 import { Director } from './core/director.js';
 import { Hud } from './core/hud.js';
 import { initRotateGate } from './core/orientation.js';
+import { runOpening } from './opening/opening.js';
 import { SONG } from './data/lyrics.js';
 import { buildTimeline } from './data/timeline.js';
 
@@ -34,54 +35,30 @@ await director.load(buildTimeline());
 const hud = new Hud({ clock, director });
 if (params.get('hud') === '1') hud.show();
 
-/* ---- 入场仪式 ---- */
-const gate = document.getElementById('gate');
-const hint = document.getElementById('gate-hint');
-const actions = document.getElementById('gate-actions');
-const fileInput = document.getElementById('gate-file');
+// 站内音源直接播放；缺失（如未拉素材的开发环境）则自动静默排演
+const hasBundledAudio = await audio.tryLoadDefault();
 
-let started = false;
-function start({ silent }) {
-  if (started) return;
-  started = true;
-
-  if (!silent) {
-    audio.ensureGraph(); // 必须在用户手势内
-    clock.attachMedia(audio.el);
-  }
-
-  gate.classList.add('leaving');
-  setTimeout(() => gate.remove(), 1800);
-  stage.setVeil(0, 'opacity 3.5s ease');
-
+/**
+ * 进入播放器。
+ * TODO: 开场 → 播放器的过渡演出待 Kara 分镜，目前直接起播（空时间轴黑场）。
+ */
+function enterPlayer({ hasAudio }) {
+  if (hasAudio) clock.attachMedia(audio.el);
   const t0 = parseFloat(params.get('t') || '0');
   if (t0 > 0) clock.seek(t0);
   clock.play();
 }
 
-const hasDefault = await audio.tryLoadDefault();
-if (hasDefault) {
-  hint.textContent = '点击光环，开始';
+// 开场演出直接使用 WebGL 舞台作背景，撤下黑场幕布
+stage.setVeil(0);
+
+if (params.get('silent') === '1') {
+  // 跳过开场直接静默排演（开发与自动化验证用）
+  enterPlayer({ hasAudio: false });
 } else {
-  hint.textContent = '未找到本地音源 — 可选择文件，或直接静默排演';
-  actions.hidden = false;
+  runOpening({ stage, audio, onDone: enterPlayer });
+  if (!hasBundledAudio) console.warn('[main] 未找到站内音源，点击光环后将静默排演');
 }
-
-document.getElementById('gate-halo').addEventListener('click', () => {
-  start({ silent: !audio.el.src });
-});
-fileInput.addEventListener('change', () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  audio.loadFile(file);
-  start({ silent: false });
-});
-document.getElementById('gate-silent').addEventListener('click', () => {
-  start({ silent: true });
-});
-
-// ?silent=1：跳过入场直接静默排演（开发与自动化验证用）
-if (params.get('silent') === '1') start({ silent: true });
 
 /* ---- 主循环 ---- */
 let last = performance.now();

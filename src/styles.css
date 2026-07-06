@@ -90,92 +90,133 @@ html, body {
   pointer-events: none;
 }
 
-/* ---- 入场仪式 ---- */
-#gate {
+/* ---- 开场演出 ---- */
+#opening {
+  position: absolute; inset: 0;
+  z-index: 30;
+  overflow: hidden;
+}
+#opening-dust {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  z-index: 34;
+  pointer-events: none;
+}
+
+#op-line {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 2px; height: 100vh;
+  transform: translate(-50%, -50%) scaleY(0);
+  background: var(--c-mist);
+  box-shadow: 0 0 14px rgba(185, 188, 224, 0.85);
+}
+
+#op-title {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 46vw; height: 12vh;
+  opacity: 0;
+}
+#op-title .lang {
   position: absolute; inset: 0;
   display: grid; place-items: center;
-  background: radial-gradient(120% 90% at 50% 62%, rgba(38, 38, 74, 0.92), rgba(10, 10, 22, 0.98));
-  z-index: 30;
-  transition: opacity 1.6s ease;
-}
-#gate.leaving { opacity: 0; pointer-events: none; }
-.gate-inner { text-align: center; padding: 2rem; }
-.gate-kr {
-  font-family: var(--font-kr);
-  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
-  letter-spacing: 0.65em;
-  color: var(--c-dusk);
-  margin-bottom: 0.9rem;
-}
-.gate-jp {
-  font-family: var(--font-jp);
-  font-weight: 400;
-  font-size: clamp(1.9rem, 5vw, 3.6rem);
-  letter-spacing: 0.22em;
+  opacity: 0;
+  white-space: nowrap;
+  font-size: clamp(1.5rem, 3.4vw, 3rem);
+  letter-spacing: 0.2em;
   color: var(--c-ink);
+  text-shadow: 0 0 26px rgba(139, 143, 199, 0.5);
 }
-.gate-en {
-  font-family: var(--font-jp);
-  font-style: italic;
-  font-size: clamp(0.75rem, 1.4vw, 0.95rem);
-  letter-spacing: 0.42em;
-  color: var(--c-mist);
-  opacity: 0.65;
-  margin-top: 0.7rem;
-}
+#op-title .jp { font-family: var(--font-jp); }
+#op-title .en { font-family: var(--font-jp); font-style: italic; letter-spacing: 0.12em; }
+#op-title .zh { font-family: var(--font-zh); }
+#op-title .kr { font-family: var(--font-kr); letter-spacing: 0.3em; }
 
-#gate-halo {
-  position: relative;
-  width: 108px; height: 108px;
-  margin: 2.6rem auto 1.4rem;
+#op-cover {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: min(30vw, 48vh);
+  aspect-ratio: 1;
+  overflow: hidden;
+  box-shadow: 0 6px 44px rgba(6, 6, 16, 0.6);
+}
+#op-cover img {
+  width: 100%; height: 100%;
+  object-fit: cover;
   display: block;
-  background: none; border: 0; cursor: pointer;
-}
-#gate-halo .ring {
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 3px solid var(--c-halo);
-  transform: rotateX(58deg) rotateZ(-16deg);
-  box-shadow:
-    0 0 22px rgba(244, 236, 200, 0.55),
-    inset 0 0 18px rgba(244, 236, 200, 0.35);
-  animation: halo-breathe 4.2s ease-in-out infinite;
-}
-#gate-halo:hover .ring { animation-duration: 2.2s; }
-@keyframes halo-breathe {
-  0%, 100% { opacity: 0.75; scale: 1; }
-  50% { opacity: 1; scale: 1.06; }
 }
 
-.gate-hint {
-  font-size: 0.82rem;
-  letter-spacing: 0.28em;
-  color: var(--c-mist);
-  opacity: 0.8;
-  min-height: 1.4em;
+#op-staff {
+  position: absolute;
+  transform: translate(-50%, -50%);
 }
-#gate-actions { margin-top: 1.2rem; display: flex; gap: 0.9rem; justify-content: center; }
-.gate-btn {
-  display: inline-block;
-  padding: 0.5rem 1.2rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.22em;
+.op-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2em;
+  margin: 1.1em 0;
+}
+.op-role {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  color: var(--c-dusk);
+  min-width: 5.5em;
+}
+.op-name {
+  font-family: var(--font-jp);
+  font-size: 1.08rem;
+  letter-spacing: 0.12em;
   color: var(--c-ink);
-  border: 1px solid rgba(185, 188, 224, 0.45);
-  border-radius: 2px;
-  background: rgba(139, 143, 199, 0.08);
-  cursor: pointer;
-  font-family: inherit;
 }
-.gate-btn:hover { background: rgba(139, 143, 199, 0.22); }
-.gate-btn.subtle { border-color: rgba(185, 188, 224, 0.2); color: var(--c-mist); }
-.gate-credit {
-  margin-top: 2.4rem;
+.op-note {
+  margin-top: 2em;
   font-size: 0.68rem;
   letter-spacing: 0.18em;
   color: var(--c-dusk);
-  opacity: 0.55;
+  opacity: 0.6;
 }
+#op-back {
+  display: inline-block;
+  margin-top: 1.6em;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--c-mist);
+  text-decoration: none;
+  border: 1px solid rgba(185, 188, 224, 0.35);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+#op-back:hover {
+  color: var(--c-ink);
+  background: rgba(139, 143, 199, 0.16);
+}
+
+#op-tap {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 21vh);
+  transform: translateX(-50%);
+  font-family: var(--font-jp);
+  font-style: italic;
+  font-size: 0.8rem;
+  letter-spacing: 0.34em;
+  color: var(--c-mist);
+  opacity: 0;
+  white-space: nowrap;
+}
+
+#op-hit {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 44vmin; height: 44vmin;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: none; border: 0;
+  pointer-events: none;
+}
+#op-hit.armed { pointer-events: auto; cursor: pointer; }
 
 /* ---- 横屏引导（移动端竖屏遮罩） ---- */
 #rotate-gate {

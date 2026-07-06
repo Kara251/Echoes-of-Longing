@@ -2,7 +2,7 @@
 
 Blue Archive Ex.「Decagrammaton」篇 ED《憧れの残響 / Echoes of Longing》（Mitsukiyo × 夕野ヨシミ × DAZBEE）的**网页版静止系MAD**：不是歌词列表，而是以歌曲播放为时间轴的一场 4:28 实时演出。每句歌词是一个独立的"卡"（cut），拥有自己的分镜、镜头语言与文字演出。
 
-> 当前状态：**引擎与创作框架已就绪，演出内容为演示卡占位**。正式演出将随歌词、译文与素材逐句设计。
+> 当前状态：**开场演出已按 Kara 分镜实现**（标题升起 → 线段分裂 → 封面/Staff 拉出 → Malkuth 光环顺时针显现 → 点击后粉末消散入场）。歌词演出时间轴为空，待逐句分镜设计；开场 → 播放器的过渡演出待定。
 
 ## 运行
 
@@ -40,8 +40,9 @@ WebGL 层   Three.js 场景（海面 / 光环 / 粒子 / 图像平面）
 ```
 
 - `src/core/` — 引擎四件套：`clock`（主时钟，无音频可自由走）、`audio`（音源加载 + bass/mid/high/beat 实时分析）、`director`（cut 生命周期调度，区间可重叠）、`stage`（三层舞台）；以及 `type`（逐字排印与残响工具）、`hud`（创作工作台）、`orientation`（移动端横屏引导）。
-- `src/fx/` — 共享演出组件：`halo`（呼吸 / 涟漪 / 碎裂）、`ocean`（暮色海面）、`grain`（胶片后期）、`imagePlane`（任意素材的视差 / 溶解 / RGB 分离管线）、`textParticles`（文字粒子聚散）。
-- `src/cuts/` — 每卡一个文件。契约见 `base.js`：`init → enter → update(p, t, dt, audio) → exit → dispose`，`enter` 必须支持从任意时间点 seek 进入。`demo/` 下为演示卡，将被正式演出替换。
+- `src/opening/` — 开场演出：`opening`（分镜编排与可调参数）、`malkuthHalo`（3D 棱面光环，角向顺时针显影/逆时针收回）、`dust`（粉末消散尘粒层）。
+- `src/fx/` — 共享演出组件：`ocean`（暮色海面）、`grain`（胶片后期）、`imagePlane`（任意素材的视差 / 溶解 / RGB 分离管线）、`textParticles`（文字粒子聚散）。
+- `src/cuts/` — 每卡一个文件。契约见 `base.js`：`init → enter → update(p, t, dt, audio) → exit → dispose`，`enter` 必须支持从任意时间点 seek 进入。
 - `src/data/` — `lyrics.js`（歌词原料表，待填入官方词与译文）、`timeline.js`（分镜表）。
 
 ## 逐句创作流程
