@@ -13,7 +13,7 @@ import { LYRICS } from '../../data/lyrics.js';
  */
 export class DemoTypeline extends Cut {
   async init() {
-    this.data = LYRICS.find((l) => l.id === 'demo-line');
+    this.data = LYRICS.find((l) => l.id === 'demo-line') ?? LYRICS[0];
   }
 
   enter() {
