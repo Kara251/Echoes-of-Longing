@@ -14,8 +14,14 @@ import { createGrainPass } from '../fx/grain.js';
  */
 export class Stage {
   constructor({ canvas, cineLayer }) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 移动 GPU 上抗锯齿或高像素比可能导致上下文创建失败/掉帧，逐级退让
+    try {
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    } catch {
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+    }
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0d0d1f);
@@ -23,13 +29,23 @@ export class Stage {
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
     this.camera.position.set(0, 0, 10);
 
-    this.composer = new EffectComposer(this.renderer);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.65, 0.82);
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(new OutputPass());
-    this.grain = createGrainPass();
-    this.composer.addPass(this.grain);
+    // 后期管线（Bloom 需要浮点渲染目标，个别设备不支持时降级直渲）
+    this.post = true;
+    try {
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.65, 0.82);
+      this.composer.addPass(this.bloom);
+      this.composer.addPass(new OutputPass());
+      this.grain = createGrainPass();
+      this.composer.addPass(this.grain);
+    } catch (err) {
+      console.warn('[stage] 后期管线不可用，降级为直接渲染', err);
+      this.post = false;
+      this.composer = null;
+      this.bloom = { strength: 0.38 }; // 占位对象：演出对 bloom 的 tween 不致报错
+      this.grain = { uniforms: { uTime: { value: 0 } } };
+    }
 
     this._barTop = cineLayer.querySelector('.bar.top');
     this._barBottom = cineLayer.querySelector('.bar.bottom');
@@ -46,7 +62,7 @@ export class Stage {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
-    this.composer.setSize(w, h);
+    this.composer?.setSize(w, h);
   }
 
   /* ---- 电影层 ---- */
@@ -77,6 +93,10 @@ export class Stage {
   }
 
   render(dt, t) {
+    if (!this.post) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
     this.grain.uniforms.uTime.value = t;
     this.composer.render(dt);
   }

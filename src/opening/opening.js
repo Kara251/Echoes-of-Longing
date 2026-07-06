@@ -12,11 +12,14 @@ import { DustField } from './dust.js';
  *    右 —— Staff（英文）与「上一级」按钮
  *    双边同始同终；标题随后以 日/英/中/韩 轮播淡入淡出
  *  3 线段消失 → 光环中心点浮现 → 双边继续靠边让位
- *  4 光环轮廓自顶部顺时针、带加速度地发光显现
+ *  4 让位完成后，光环轮廓自顶部顺时针、带加速度地发光显现
  *  5 光环下方浮现 Tap Halo to Continue，光环即入口
  *  6 点击：内容区自右下向左上化作粉末消散（光环除外），
  *    光环按入场逆序退场（轮廓逆时针收回 → 中点熄灭）
  *  7 onDone —— 进入播放器（过渡演出待定）
+ *
+ * 移动端适配：布局按启动时视口解算为像素；竖屏进入时等待转横屏再开演，
+ * 开演后发生旋转/明显视口变化则整场重排重演（点击后不再重演）。
  */
 
 /* ---- 可调参数（逐项打磨用） ---- */
@@ -98,182 +101,227 @@ function clipFor(f) {
 }
 
 export function runOpening({ stage, audio, onDone }) {
-  const root = buildDom();
-  const $ = (sel) => root.querySelector(sel);
-  const line = $('#op-line');
-  const title = $('#op-title');
-  const cover = $('#op-cover');
-  const coverImg = cover.querySelector('img');
-  const staff = $('#op-staff');
-  const tap = $('#op-tap');
-  const hit = $('#op-hit');
-  const langs = [...title.querySelectorAll('.lang')];
-
-  const halo = new MalkuthHalo(stage.scene);
   const bloom0 = stage.bloom.strength;
-  let carousel = null;
   let tapped = false;
+  let current = null; // 本次开演的句柄（供重排重演时清场）
 
-  /* ---- 布局解算（标题贴封面组成居中块；开场期间不响应 resize） ---- */
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const coverSize = Math.min(POS.coverW[0] * vw, POS.coverW[1] * vh);
-  const titleH = POS.titleH * vh;
-  const gap = Math.max(POS.titleGapMin, POS.titleGap * vh);
-  const blockTop = (vh - (titleH + gap + coverSize)) / 2;
-  const titleY = blockTop + titleH / 2;
-  const coverY = blockTop + titleH + gap + coverSize / 2;
-  const leftX = POS.splitX * vw;
-  const rightX = (1 - POS.splitX) * vw;
-  const dockShift = (POS.splitX - POS.dockX) * vw;
+  /** 竖屏触屏设备等横屏引导解除后再开演 */
+  const canStart = () =>
+    !(matchMedia('(pointer: coarse)').matches && window.innerHeight > window.innerWidth);
 
-  /* ---- 初始状态 ---- */
-  gsap.set(title, {
-    left: vw / 2,
-    top: (POS.titleStartY + POS.titleRise) * vh,
-    xPercent: -50,
-    yPercent: -50,
-    height: titleH,
-    opacity: 0,
-  });
-  gsap.set(langs[0], { opacity: 1 });
+  function start() {
+    const root = buildDom();
+    const $ = (sel) => root.querySelector(sel);
+    const line = $('#op-line');
+    const title = $('#op-title');
+    const cover = $('#op-cover');
+    const coverImg = cover.querySelector('img');
+    const staff = $('#op-staff');
+    const tap = $('#op-tap');
+    const hit = $('#op-hit');
+    const langs = [...title.querySelectorAll('.lang')];
 
-  // 抽屉内容置于分裂后的位置，再整体推回中线之后（被 .op-drawer 裁切隐藏）
-  gsap.set(cover, {
-    left: leftX,
-    top: coverY,
-    xPercent: -50,
-    yPercent: -50,
-    width: coverSize,
-    height: coverSize,
-    x: vw / 2 - (leftX - coverSize / 2),
-  });
-  // 注意：#op-staff 的包含块是右抽屉（起点在 50vw），left 用抽屉局部坐标
-  gsap.set(staff, { left: rightX - vw / 2, top: vh / 2, xPercent: -50, yPercent: -50 });
-  const staffW = staff.offsetWidth;
-  gsap.set(staff, { x: -(rightX - vw / 2 + staffW / 2) });
+    const halo = new MalkuthHalo(stage.scene);
+    let carousel = null;
 
-  /* ---- 入场时间轴 ---- */
-  const tl = gsap.timeline();
+    /* ---- 布局解算（标题贴封面组成居中块；像素基于当前视口） ---- */
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const coverSize = Math.min(POS.coverW[0] * vw, POS.coverW[1] * vh);
+    const titleH = POS.titleH * vh;
+    const gap = Math.max(POS.titleGapMin, POS.titleGap * vh);
+    const blockTop = (vh - (titleH + gap + coverSize)) / 2;
+    const titleY = blockTop + titleH / 2;
+    const coverY = blockTop + titleH + gap + coverSize / 2;
+    const leftX = POS.splitX * vw;
+    const rightX = (1 - POS.splitX) * vw;
+    const dockShift = (POS.splitX - POS.dockX) * vw;
 
-  // 1 标题升起淡入 + 停留
-  tl.to(title, {
-    top: POS.titleStartY * vh,
-    opacity: 1,
-    duration: T.titleIn,
-    ease: 'power2.out',
-  });
-  tl.to({}, { duration: T.titleHold });
-
-  // 2 短线段自正中向上下射出
-  tl.add('line');
-  tl.to(line, { scaleY: 1, duration: T.lineGrow, ease: 'power4.out' }, 'line');
-
-  // 双边像抽屉一样自线段后拉出（同始同终）；标题同时移至封面正上方
-  tl.add('split', `line+=${T.lineGrow * 0.5}`);
-  tl.to(cover, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
-  tl.to(staff, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
-  tl.to(
-    title,
-    { left: leftX, top: titleY, duration: T.split, ease: 'power3.inOut' },
-    'split'
-  );
-
-  // 标题开始多语言轮播
-  tl.call(() => {
-    carousel = gsap.timeline({ repeat: -1 });
-    for (let i = 0; i < langs.length; i++) {
-      const cur = langs[i];
-      const next = langs[(i + 1) % langs.length];
-      carousel
-        .to(cur, { opacity: 0, duration: T.crossfade, ease: 'power1.inOut' }, `+=${T.carousel}`)
-        .to(next, { opacity: 1, duration: T.crossfade, ease: 'power1.inOut' }, '<15%');
-    }
-  });
-
-  // 3 线段消失，光环中点浮现，双边继续靠边让位
-  tl.to(line, { opacity: 0, duration: T.lineOut, ease: 'power1.in' });
-  tl.add(halo.showDot(T.dotIn));
-  tl.add('dock');
-  tl.to(
-    cover,
-    { x: -dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
-    'dock'
-  );
-  tl.to(
-    title,
-    { left: leftX - dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
-    'dock'
-  );
-  tl.to(
-    staff,
-    { x: dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
-    'dock'
-  );
-
-  // 4 光环轮廓顺时针加速显现 + 辉光抬升
-  tl.add('ring');
-  tl.add(halo.draw(T.ringDraw), 'ring');
-  tl.to(stage.bloom, { strength: 0.9, duration: T.ringDraw, ease: 'power2.in' }, 'ring');
-  tl.to(stage.bloom, { strength: 0.6, duration: 0.8, ease: 'power2.out' });
-
-  // 5 Tap 提示，开放点击
-  tl.to(tap, { opacity: 0.85, duration: T.tapIn, ease: 'power1.out' }, '<');
-  tl.call(() => {
-    halo.breathe();
-    hit.classList.add('armed');
-    gsap.to(tap, { opacity: 0.35, duration: 1.6, ease: 'sine.inOut', repeat: -1, yoyo: true });
-  });
-
-  /* ---- 6 点击光环：粉末消散 + 光环逆序退场 ---- */
-  hit.addEventListener('click', async () => {
-    if (tapped) return;
-    tapped = true;
-    hit.classList.remove('armed');
-    carousel?.kill();
-    gsap.killTweensOf(tap);
-
-    // 浏览器手势内解锁音频（先播即停，正式起播交给播放器）
-    let hasAudio = false;
-    if (audio.el.src) {
-      try {
-        audio.ensureGraph();
-        await audio.el.play();
-        audio.el.pause();
-        audio.el.currentTime = 0;
-        hasAudio = true;
-      } catch (err) {
-        console.warn('[opening] 音频解锁失败，转静默排演', err);
-      }
-    }
-
-    const dust = new DustField();
-    await new Promise((resolve) => {
-      const front = { f: 2 };
-      gsap.to(front, {
-        f: 0,
-        duration: T.dissolve,
-        ease: 'power1.inOut',
-        onUpdate: () => {
-          root.style.clipPath = clipFor(front.f);
-          dust.emitAlongFront(front.f);
-        },
-        onComplete: resolve,
-      });
+    /* ---- 初始状态 ---- */
+    gsap.set(title, {
+      left: vw / 2,
+      top: (POS.titleStartY + POS.titleRise) * vh,
+      xPercent: -50,
+      yPercent: -50,
+      height: titleH,
+      opacity: 0,
     });
-    root.style.visibility = 'hidden';
+    gsap.set(langs[0], { opacity: 1 });
 
-    await halo.undraw(T.ringUndraw);
-    gsap.to(stage.bloom, { strength: bloom0, duration: T.ringUndraw, ease: 'power1.out' });
-    await halo.hideDot(T.dotOut);
+    // 抽屉内容置于分裂后的位置，再整体推回中线之后（被 .op-drawer 裁切隐藏）
+    gsap.set(cover, {
+      left: leftX,
+      top: coverY,
+      xPercent: -50,
+      yPercent: -50,
+      width: coverSize,
+      height: coverSize,
+      x: vw / 2 - (leftX - coverSize / 2),
+    });
+    // 注意：#op-staff 的包含块是右抽屉（起点在 50vw），left 用抽屉局部坐标
+    gsap.set(staff, { left: rightX - vw / 2, top: vh / 2, xPercent: -50, yPercent: -50 });
+    const staffW = staff.offsetWidth;
+    gsap.set(staff, { x: -(rightX - vw / 2 + staffW / 2) });
 
-    dust.dispose();
-    halo.dispose();
-    tl.kill();
-    root.remove();
-    onDone({ hasAudio });
-  });
+    /* ---- 入场时间轴 ---- */
+    const tl = gsap.timeline();
 
-  // 封面预解码，避免拉出瞬间的空白闪变
-  coverImg.decode?.().catch(() => {});
+    // 1 标题升起淡入 + 停留
+    tl.to(title, {
+      top: POS.titleStartY * vh,
+      opacity: 1,
+      duration: T.titleIn,
+      ease: 'power2.out',
+    });
+    tl.to({}, { duration: T.titleHold });
+
+    // 2 短线段自正中向上下射出
+    tl.add('line');
+    tl.to(line, { scaleY: 1, duration: T.lineGrow, ease: 'power4.out' }, 'line');
+
+    // 双边像抽屉一样自线段后拉出（同始同终）；标题同时移至封面正上方
+    tl.add('split', `line+=${T.lineGrow * 0.5}`);
+    tl.to(cover, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
+    tl.to(staff, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
+    tl.to(
+      title,
+      { left: leftX, top: titleY, duration: T.split, ease: 'power3.inOut' },
+      'split'
+    );
+
+    // 标题开始多语言轮播
+    tl.call(() => {
+      carousel = gsap.timeline({ repeat: -1 });
+      for (let i = 0; i < langs.length; i++) {
+        const cur = langs[i];
+        const next = langs[(i + 1) % langs.length];
+        carousel
+          .to(cur, { opacity: 0, duration: T.crossfade, ease: 'power1.inOut' }, `+=${T.carousel}`)
+          .to(next, { opacity: 1, duration: T.crossfade, ease: 'power1.inOut' }, '<15%');
+      }
+    });
+
+    // 3 线段消失，光环中点浮现，双边继续靠边让位
+    tl.to(line, { opacity: 0, duration: T.lineOut, ease: 'power1.in' });
+    tl.add(halo.showDot(T.dotIn));
+    tl.add('dock');
+    tl.to(
+      cover,
+      { x: -dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
+      'dock'
+    );
+    tl.to(
+      title,
+      { left: leftX - dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
+      'dock'
+    );
+    tl.to(
+      staff,
+      { x: dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
+      'dock'
+    );
+
+    // 4 光环轮廓顺时针加速显现 + 辉光抬升
+    tl.add('ring');
+    tl.add(halo.draw(T.ringDraw), 'ring');
+    tl.to(stage.bloom, { strength: 0.9, duration: T.ringDraw, ease: 'power2.in' }, 'ring');
+    tl.to(stage.bloom, { strength: 0.6, duration: 0.8, ease: 'power2.out' });
+
+    // 5 Tap 提示，开放点击
+    tl.to(tap, { opacity: 0.85, duration: T.tapIn, ease: 'power1.out' }, '<');
+    tl.call(() => {
+      halo.breathe();
+      hit.classList.add('armed');
+      gsap.to(tap, { opacity: 0.35, duration: 1.6, ease: 'sine.inOut', repeat: -1, yoyo: true });
+    });
+
+    /* ---- 6 点击光环：粉末消散 + 光环逆序退场 ---- */
+    async function onTap(e) {
+      if (tapped || !hit.classList.contains('armed')) return;
+      if (e.button !== undefined && e.button > 0) return;
+      tapped = true;
+      stopRelayout();
+      hit.classList.remove('armed');
+      carousel?.kill();
+      gsap.killTweensOf(tap);
+
+      // 浏览器手势内解锁音频（先播即停，正式起播交给播放器）
+      let hasAudio = false;
+      if (audio.el.src) {
+        try {
+          audio.ensureGraph();
+          await audio.el.play();
+          audio.el.pause();
+          audio.el.currentTime = 0;
+          hasAudio = true;
+        } catch (err) {
+          console.warn('[opening] 音频解锁失败，转静默排演', err);
+        }
+      }
+
+      const dust = new DustField();
+      await new Promise((resolve) => {
+        const front = { f: 2 };
+        gsap.to(front, {
+          f: 0,
+          duration: T.dissolve,
+          ease: 'power1.inOut',
+          onUpdate: () => {
+            root.style.clipPath = clipFor(front.f);
+            dust.emitAlongFront(front.f);
+          },
+          onComplete: resolve,
+        });
+      });
+      root.style.visibility = 'hidden';
+
+      await halo.undraw(T.ringUndraw);
+      gsap.to(stage.bloom, { strength: bloom0, duration: T.ringUndraw, ease: 'power1.out' });
+      await halo.hideDot(T.dotOut);
+
+      dust.dispose();
+      dispose(false);
+      onDone({ hasAudio });
+    }
+    // click 为主，pointerup 兜底（个别移动浏览器 click 合成不可靠）；onTap 幂等
+    hit.addEventListener('click', onTap);
+    hit.addEventListener('pointerup', onTap);
+
+    // 封面预解码，避免拉出瞬间的空白闪变
+    coverImg.decode?.().catch(() => {});
+
+    function dispose(restoreBloom = true) {
+      tl.kill();
+      carousel?.kill();
+      gsap.killTweensOf([title, cover, staff, line, tap]);
+      gsap.killTweensOf(stage.bloom);
+      halo.dispose();
+      root.remove();
+      if (restoreBloom) stage.bloom.strength = bloom0;
+    }
+    return { dispose };
+  }
+
+  /* ---- 横竖屏切换 / 视口突变：点击前整场重排重演 ---- */
+  let resizeTimer = 0;
+  function onViewportChange() {
+    if (tapped) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (tapped) return;
+      current?.dispose();
+      current = null;
+      if (canStart()) current = start();
+    }, 250);
+  }
+  function stopRelayout() {
+    clearTimeout(resizeTimer);
+    window.removeEventListener('resize', onViewportChange);
+    window.removeEventListener('orientationchange', onViewportChange);
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', onViewportChange);
+
+  if (canStart()) current = start();
+  // 竖屏触屏进入：横屏引导正在遮罩，转横屏触发 resize 后再开演
 }

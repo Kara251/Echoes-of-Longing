@@ -210,6 +210,7 @@ html, body {
   color: var(--c-mist);
   opacity: 0;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 #op-hit {
@@ -220,6 +221,8 @@ html, body {
   border-radius: 50%;
   background: none; border: 0;
   pointer-events: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 #op-hit.armed { pointer-events: auto; cursor: pointer; }
 

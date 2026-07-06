@@ -26,18 +26,21 @@ export class AudioEngine {
     this._bassAvg = 0;
   }
 
-  /** 探测仓库外的本地默认音源，找到返回 true */
+  /** 探测站内默认音源，找到返回 true。单次探测限时，避免弱网卡死启动流程 */
   async tryLoadDefault() {
     for (const url of DEFAULT_CANDIDATES) {
       try {
-        const res = await fetch(url, { method: 'HEAD' });
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(url, { method: 'HEAD', signal: ctrl.signal });
+        clearTimeout(timer);
         const type = res.headers.get('content-type') || '';
         if (res.ok && !type.includes('text/html')) {
           this.el.src = url;
           return true;
         }
       } catch {
-        /* 探测失败视同缺失 */
+        /* 探测失败/超时视同缺失 */
       }
     }
     return false;
