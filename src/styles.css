@@ -106,16 +106,24 @@ html, body {
 #op-line {
   position: absolute;
   left: 50%; top: 50%;
-  width: 2px; height: 100vh;
+  width: 1.5px; height: 22vh;
   transform: translate(-50%, -50%) scaleY(0);
   background: var(--c-mist);
   box-shadow: 0 0 14px rgba(185, 188, 224, 0.85);
 }
 
+/* 抽屉：以中线为内缘裁切，内容自线段后拉出 */
+.op-drawer {
+  position: absolute;
+  top: 0; bottom: 0;
+  overflow: hidden;
+}
+.op-drawer.left { left: 0; right: 50%; }
+.op-drawer.right { left: 50%; right: 0; }
+
 #op-title {
   position: absolute;
-  transform: translate(-50%, -50%);
-  width: 46vw; height: 12vh;
+  width: 46vw;
   opacity: 0;
 }
 #op-title .lang {
@@ -135,9 +143,6 @@ html, body {
 
 #op-cover {
   position: absolute;
-  transform: translate(-50%, -50%);
-  width: min(30vw, 48vh);
-  aspect-ratio: 1;
   overflow: hidden;
   box-shadow: 0 6px 44px rgba(6, 6, 16, 0.6);
 }
@@ -149,7 +154,6 @@ html, body {
 
 #op-staff {
   position: absolute;
-  transform: translate(-50%, -50%);
 }
 .op-row {
   display: flex;
@@ -161,13 +165,14 @@ html, body {
   font-size: 0.72rem;
   letter-spacing: 0.3em;
   color: var(--c-dusk);
-  min-width: 5.5em;
+  min-width: 4.5em;
 }
 .op-name {
   font-family: var(--font-jp);
   font-size: 1.08rem;
   letter-spacing: 0.12em;
   color: var(--c-ink);
+  white-space: nowrap;
 }
 .op-note {
   margin-top: 2em;

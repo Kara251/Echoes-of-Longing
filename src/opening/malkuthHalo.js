@@ -9,7 +9,7 @@ import { gsap } from 'gsap';
  * 轮廓显隐由 uArc 角向控制：自顶部起顺时针生长（入场），反向收回（退场）。
  */
 const RADIUS = 1.5;
-const TUBE = 0.085;
+const TUBE = 0.042;
 const FACETS = 22; // 棱面数
 const OPEN_DEG = 30; // 从线段姿态逆时针打开
 const TILT_DEG = 30; // 屏幕面内逆时针倾斜
