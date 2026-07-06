@@ -56,7 +56,7 @@ const TITLES = [
 ];
 const STAFF = [
   { role: 'Music', name: 'Mitsukiyo' },
-  { role: 'Lyrics', name: 'Yoshimi Yuno (IOSYS)' },
+  { role: 'Lyrics', name: 'Yuno Yoshimi (IOSYS)' },
   { role: 'Vocal', name: 'DAZBEE' },
 ];
 

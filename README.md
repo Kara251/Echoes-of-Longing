@@ -1,6 +1,6 @@
 # 동경의 잔향 — Echoes of Longing
 
-Blue Archive Ex.「Decagrammaton」篇 ED《憧れの残響 / Echoes of Longing》（Mitsukiyo × 夕野ヨシミ × DAZBEE）的**网页版静止系MAD**：不是歌词列表，而是以歌曲播放为时间轴的一场 4:28 实时演出。每句歌词是一个独立的"卡"（cut），拥有自己的分镜、镜头语言与文字演出。
+Blue Archive Ex.「Decagrammaton」篇 ED《憧れの残響 / Echoes of Longing》（Mitsukiyo × Yuno Yoshimi × DAZBEE）的**网页版静止系MAD**：不是歌词列表，而是以歌曲播放为时间轴的一场 4:28 实时演出。每句歌词是一个独立的"卡"（cut），拥有自己的分镜、镜头语言与文字演出。
 
 > 当前状态：**开场演出已按 Kara 分镜实现**（标题升起 → 线段分裂 → 封面/Staff 拉出 → Malkuth 光环顺时针显现 → 点击后粉末消散入场）。歌词演出时间轴为空，待逐句分镜设计；开场 → 播放器的过渡演出待定。
 

@@ -34,7 +34,7 @@ export const SONG = {
   },
   artist: {
     composer: 'Mitsukiyo',
-    lyricist: '夕野ヨシミ (IOSYS)',
+    lyricist: 'Yuno Yoshimi (IOSYS)',
     vocalist: 'DAZBEE',
   },
   duration: 269.56, // 实测（接入音源后仍以 metadata 为准）
