@@ -163,6 +163,17 @@ export function runOpening({ stage, audio, onDone }) {
     const staffW = staff.offsetWidth;
     gsap.set(staff, { x: -(rightX - vw / 2 + staffW / 2) });
 
+    // 靠边距离按内容宽度收敛：窄屏不把内容推出屏幕（光环在内容之下，允许重叠）
+    const margin = 12;
+    const dockShiftL = Math.max(
+      0,
+      Math.min(dockShift, leftX - margin - (Math.max(coverSize, title.offsetWidth) * POS.dockScale) / 2)
+    );
+    const dockShiftR = Math.max(
+      0,
+      Math.min(dockShift, vw - margin - rightX - (staffW * POS.dockScale) / 2)
+    );
+
     /* ---- 入场时间轴 ---- */
     const tl = gsap.timeline();
 
@@ -175,12 +186,12 @@ export function runOpening({ stage, audio, onDone }) {
     });
     tl.to({}, { duration: T.titleHold });
 
-    // 2 短线段自正中向上下射出
+    // 2 短线段自正中向上下射出；标题几乎同时开始让位，避免被线段劈开
     tl.add('line');
     tl.to(line, { scaleY: 1, duration: T.lineGrow, ease: 'power4.out' }, 'line');
 
     // 双边像抽屉一样自线段后拉出（同始同终）；标题同时移至封面正上方
-    tl.add('split', `line+=${T.lineGrow * 0.5}`);
+    tl.add('split', `line+=${T.lineGrow * 0.15}`);
     tl.to(cover, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
     tl.to(staff, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
     tl.to(
@@ -188,6 +199,9 @@ export function runOpening({ stage, audio, onDone }) {
       { left: leftX, top: titleY, duration: T.split, ease: 'power3.inOut' },
       'split'
     );
+
+    // 拉出完成：撤下抽屉裁切（窄屏下右列可能宽于右半屏，继续裁切会切掉左缘）
+    tl.call(() => root.classList.add('drawers-open'));
 
     // 标题开始多语言轮播
     tl.call(() => {
@@ -207,17 +221,17 @@ export function runOpening({ stage, audio, onDone }) {
     tl.add('dock');
     tl.to(
       cover,
-      { x: -dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
+      { x: -dockShiftL, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
       'dock'
     );
     tl.to(
       title,
-      { left: leftX - dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
+      { left: leftX - dockShiftL, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
       'dock'
     );
     tl.to(
       staff,
-      { x: dockShift, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
+      { x: dockShiftR, scale: POS.dockScale, duration: T.dock, ease: 'power2.inOut' },
       'dock'
     );
 
@@ -302,13 +316,25 @@ export function runOpening({ stage, audio, onDone }) {
     return { dispose };
   }
 
-  /* ---- 横竖屏切换 / 视口突变：点击前整场重排重演 ---- */
+  /* ---- 横竖屏切换 / 视口突变：点击前整场重排重演 ----
+     仅在方向翻转或视口大幅变化时触发；移动端地址栏收起那种
+     小幅高度变化不重演，避免开场反复重放。 */
   let resizeTimer = 0;
+  let lastW = window.innerWidth;
+  let lastH = window.innerHeight;
+  function significantChange() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const flipped = w > h !== lastW > lastH;
+    return flipped || Math.abs(w - lastW) > 60 || Math.abs(h - lastH) > Math.max(120, lastH * 0.25);
+  }
   function onViewportChange() {
     if (tapped) return;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (tapped) return;
+      if (tapped || !significantChange()) return;
+      lastW = window.innerWidth;
+      lastH = window.innerHeight;
       current?.dispose();
       current = null;
       if (canStart()) current = start();

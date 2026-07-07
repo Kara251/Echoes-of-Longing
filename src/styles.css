@@ -150,7 +150,8 @@ html, body {
   box-shadow: 0 0 14px rgba(185, 188, 224, 0.85);
 }
 
-/* 抽屉：以中线为内缘裁切，内容自线段后拉出 */
+/* 抽屉：以中线为内缘裁切，内容自线段后拉出；
+   拉出完成后撤下裁切（窄屏下内容可宽于半屏，光环在内容之下允许重叠） */
 .op-drawer {
   position: absolute;
   top: 0; bottom: 0;
@@ -158,6 +159,7 @@ html, body {
 }
 .op-drawer.left { left: 0; right: 50%; }
 .op-drawer.right { left: 50%; right: 0; }
+#opening.drawers-open .op-drawer { overflow: visible; }
 
 #op-title {
   position: absolute;
@@ -239,7 +241,7 @@ html, body {
 #op-tap {
   position: absolute;
   left: 50%;
-  top: calc(50% + 21vh);
+  top: calc(50% + 26vh);
   transform: translateX(-50%);
   font-family: var(--font-jp);
   font-style: italic;
@@ -254,7 +256,7 @@ html, body {
 #op-hit {
   position: absolute;
   left: 50%; top: 50%;
-  width: 44vmin; height: 44vmin;
+  width: 54vmin; height: 54vmin;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: none; border: 0;
@@ -263,6 +265,12 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 #op-hit.armed { pointer-events: auto; cursor: pointer; }
+
+/* 窄屏：右列允许换行收窄，避免宽于右半屏 */
+@media (max-width: 780px) {
+  #op-staff { max-width: 42vw; }
+  .op-name { white-space: normal; }
+}
 
 /* ---- 横屏引导（移动端竖屏遮罩） ---- */
 #rotate-gate {
