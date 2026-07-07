@@ -68,6 +68,44 @@ html, body {
   white-space: normal;
 }
 
+/* ---- 前奏 Staff 字幕（2D 不可操控）---- */
+.intro-credits {
+  position: absolute;
+  left: 7vw;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 12;
+  pointer-events: none;
+}
+.credit-batch {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-50%);
+  opacity: 0;
+  visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1.3rem;
+  white-space: nowrap;
+}
+.credit-role {
+  font-family: var(--font-sans, 'Helvetica Neue', 'Hiragino Sans', sans-serif);
+  font-size: 0.74rem;
+  letter-spacing: 0.26em;
+  color: rgba(190, 220, 245, 0.85);
+  margin-bottom: 0.35rem;
+}
+.credit-name {
+  font-family: var(--font-sans, 'Helvetica Neue', 'Hiragino Sans', sans-serif);
+  font-size: 1.14rem;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  -webkit-text-stroke: 0.8px rgba(150, 200, 240, 0.8);
+  text-shadow: 0 0 12px rgba(160, 205, 245, 0.35);
+  margin-top: 0.15rem;
+}
+
 /* ---- 电影层 ---- */
 #cine-layer { position: absolute; inset: 0; pointer-events: none; }
 #cine-layer .bar {
