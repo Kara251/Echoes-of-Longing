@@ -5,7 +5,7 @@ import * as THREE from 'three';
  *
  * 随机生成是设计要求：每次加载生成一座新的钢铁大陆，但随机只负责布局，
  * 不负责把画面打碎成噪声。每个结构簇都由主块、贴面、端舱、外挂舱、
- * 内凹面板、细桅和少量深冷灰机械嵌板组成，整体保持冷白钢铁质感。
+ * 内凹面板、短支撑和少量深冷灰机械嵌板组成，整体保持冷白钢铁质感。
  *
  * 真光环是连续 torus shader：位于第三圈外侧，先于钢铁结构向上漂散，
  * 再由粒子云延续。
@@ -32,10 +32,11 @@ export class Sanctum {
     seed = SESSION_SEED,
     decayStart = 7.8,
     decaySpan = 13.8,
-    breakRatio = 0.58,
+    breakRatio = 0.72,
     haloRingIndex = 2,
     haloRadiusOffset = 2.2,
     haloDissolveAt = 4.9,
+    steelCrumbleAt = haloDissolveAt + 0.24,
   } = {}) {
     this.group = new THREE.Group();
 
@@ -59,20 +60,23 @@ export class Sanctum {
     };
 
     const makeMotion = (ang, layer, anchor = false) => {
-      const broken =
-        !anchor && rnd() < breakRatio
-          ? decayStart + decaySpan * Math.pow(rnd(), 1.45) + layer * 0.16
-          : Infinity;
+      let broken = Infinity;
+      if (!anchor && rnd() < breakRatio) {
+        const earlyBreak = rnd() < (layer < 2 ? 0.42 : 0.26);
+        broken = earlyBreak
+          ? steelCrumbleAt + Math.pow(rnd(), 1.18) * 2.7 + layer * 0.12
+          : decayStart + decaySpan * Math.pow(rnd(), 1.45) + layer * 0.16;
+      }
       const outward = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
       const tangent = new THREE.Vector3(-Math.sin(ang), 0, Math.cos(ang));
       return {
         tBreak: broken,
         vel: outward
-          .multiplyScalar(0.28 + rnd() * 0.95)
+          .multiplyScalar(0.18 + rnd() * 0.72)
           .addScaledVector(tangent, signed() * 0.34)
-          .add(new THREE.Vector3(signed() * 0.12, -0.08 + rnd() * 0.44, signed() * 0.12)),
-        angVel: new THREE.Vector3(signed() * 1.25, signed() * 1.15, signed() * 1.25),
-        gravity: -0.035 - rnd() * 0.045,
+          .add(new THREE.Vector3(signed() * 0.12, 0.04 + rnd() * 0.26, signed() * 0.12)),
+        angVel: new THREE.Vector3(signed() * 1.05, signed() * 0.95, signed() * 1.15),
+        gravity: -0.11 - rnd() * 0.12,
         dissolve: 4.6 + rnd() * 3.8,
         floatAmp: 0.16 + rnd() * 0.38,
         floatFreq: 0.32 + rnd() * 0.62,
@@ -80,20 +84,37 @@ export class Sanctum {
       };
     };
 
-    const pushBox = ({ origin, quat, local, size, motion, colorHex, jitter = 0 }) => {
+    const pushBox = ({
+      origin,
+      quat,
+      local,
+      size,
+      motion,
+      colorHex,
+      jitter = 0,
+      breakAt = null,
+      velBoost = null,
+      gravityBoost = 0,
+      angVelBoost = 1,
+      dissolveScale = 1,
+    }) => {
+      const tBreak =
+        breakAt ?? (motion.tBreak === Infinity ? Infinity : motion.tBreak + jitter + rnd() * 0.28);
       steel.push({
         pos: origin.clone().add(local.clone().applyQuaternion(quat)),
         quat: quat.clone(),
         scale: size.clone(),
-        tBreak: motion.tBreak === Infinity ? Infinity : motion.tBreak + jitter + rnd() * 0.28,
+        tBreak,
         vel: motion.vel
           .clone()
-          .add(new THREE.Vector3(signed() * 0.09, signed() * 0.09, signed() * 0.09)),
+          .add(new THREE.Vector3(signed() * 0.09, signed() * 0.09, signed() * 0.09))
+          .add(velBoost ?? new THREE.Vector3()),
         angVel: motion.angVel
           .clone()
+          .multiplyScalar(angVelBoost)
           .add(new THREE.Vector3(signed() * 0.24, signed() * 0.24, signed() * 0.24)),
-        gravity: motion.gravity,
-        dissolve: motion.dissolve + rnd() * 0.9,
+        gravity: motion.gravity + gravityBoost,
+        dissolve: motion.dissolve * dissolveScale + rnd() * 0.9,
         floatAmp: motion.floatAmp,
         floatFreq: motion.floatFreq,
         phase: motion.phase + rnd() * TAU,
@@ -176,6 +197,47 @@ export class Sanctum {
       }
     };
 
+    const pushFallingChips = ({ origin, quat, main, motion, layer, ang, big }) => {
+      if (rnd() > (big ? 0.82 : 0.56)) return;
+
+      const outward = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+      const tangent = new THREE.Vector3(-Math.sin(ang), 0, Math.cos(ang));
+      const chipCount = 2 + Math.floor(rnd() * (big ? 7 : 5));
+      for (let i = 0; i < chipCount; i++) {
+        const local = new THREE.Vector3(
+          signed() * main.x * 0.46,
+          signed() * main.y * 0.34,
+          signed() * main.z * 0.48
+        );
+        const flat = rnd() < 0.64;
+        const size = new THREE.Vector3(
+          main.x * (0.04 + rnd() * 0.1),
+          flat ? 0.06 + rnd() * 0.08 : main.y * (0.08 + rnd() * 0.16),
+          main.z * (0.08 + rnd() * 0.2)
+        );
+        const breakAt = steelCrumbleAt + rnd() * 2.2 + layer * 0.1;
+        const velBoost = outward
+          .clone()
+          .multiplyScalar(0.08 + rnd() * 0.32)
+          .addScaledVector(tangent, signed() * 0.36)
+          .add(new THREE.Vector3(signed() * 0.08, -0.28 - rnd() * 0.34, signed() * 0.08));
+
+        pushBox({
+          origin,
+          quat,
+          local,
+          size,
+          motion,
+          colorHex: rnd() < 0.58 ? STEEL_FACE : STEEL_SIDE,
+          breakAt,
+          velBoost,
+          gravityBoost: -0.16 - rnd() * 0.12,
+          angVelBoost: 1.8 + rnd() * 1.2,
+          dissolveScale: 0.66 + rnd() * 0.34,
+        });
+      }
+    };
+
     const buildCluster = (ang, radius, y, layer, big) => {
       euler.set(0, -ang + Math.PI / 2, 0);
       yaw.setFromEuler(euler);
@@ -186,12 +248,17 @@ export class Sanctum {
         Math.sin(ang) * (radius + signed() * 0.28)
       );
 
+      const layerScale = layer === 0 ? 1.22 : layer === 1 ? 1.1 : 1;
       const main = new THREE.Vector3(
         (big ? 4.5 : 2.08) + rnd() * (big ? 3.35 : 2.48),
         (big ? 1.08 : 0.58) + rnd() * (big ? 1.02 : 0.68),
         (big ? 1.22 : 0.68) + rnd() * (big ? 0.92 : 0.58)
       );
-      const anchor = layer < 2 && rnd() < 0.16;
+      main.x *= layerScale;
+      main.z *= layerScale * (layer === 0 ? 1.06 : 1);
+      main.y *= layer < 2 ? 1.06 : 1;
+
+      const anchor = layer < 2 && rnd() < 0.08;
       const motion = makeMotion(ang, layer, anchor);
 
       pushBox({
@@ -202,6 +269,8 @@ export class Sanctum {
         motion,
         colorHex: rnd() < 0.62 ? STEEL_TOP : STEEL_FACE,
       });
+
+      pushFallingChips({ origin, quat: yaw, main, motion, layer, ang, big });
 
       if (rnd() < 0.66) {
         const insetCount = 1 + Math.floor(rnd() * (big ? 3 : 2));
@@ -268,18 +337,18 @@ export class Sanctum {
         });
       }
 
-      if (rnd() < 0.78) {
-        const strutCount = 1 + Math.floor(rnd() * (big ? 4 : 2));
+      if (rnd() < 0.24) {
+        const strutCount = 1 + Math.floor(rnd() * (big ? 2 : 1));
         for (let i = 0; i < strutCount; i++) {
           pushBox({
             origin,
             quat: yaw,
             local: new THREE.Vector3(
               signed() * main.x * 0.46,
-              -main.y * 0.5 - (0.34 + rnd() * 0.72),
+              -main.y * 0.5 - (0.1 + rnd() * 0.2),
               signed() * main.z * 0.44
             ),
-            size: new THREE.Vector3(0.055 + rnd() * 0.055, 0.55 + rnd() * 1.15, 0.055 + rnd() * 0.055),
+            size: new THREE.Vector3(0.09 + rnd() * 0.08, 0.12 + rnd() * 0.28, 0.09 + rnd() * 0.08),
             motion,
             colorHex: rnd() < 0.75 ? STEEL_SIDE : STEEL_EDGE,
             jitter: 0.16 + rnd() * 0.28,
@@ -287,7 +356,7 @@ export class Sanctum {
         }
       }
 
-      // 贴面直角子结构：顶块、薄板、端舱、径向外挂、桅杆。
+      // 贴面直角子结构：顶块、薄板、端舱、径向外挂、低矮天线。
       const subs = 3 + Math.floor(rnd() * (big ? 6 : 4));
       for (let i = 0; i < subs; i++) {
         const kind = rnd();
@@ -298,6 +367,7 @@ export class Sanctum {
         );
         let size;
         let colorHex = rnd() < 0.64 ? STEEL_TOP : STEEL_FACE;
+        let lowAntenna = false;
 
         if (kind < 0.28) {
           size = new THREE.Vector3(
@@ -331,12 +401,13 @@ export class Sanctum {
           local.z = (rnd() < 0.5 ? -1 : 1) * ((main.z + size.z) * 0.5);
           colorHex = rnd() < 0.48 ? STEEL_SIDE : colorHex;
         } else {
-          size = new THREE.Vector3(0.08 + rnd() * 0.08, 0.68 + rnd() * 1.38, 0.08 + rnd() * 0.08);
+          lowAntenna = true;
+          size = new THREE.Vector3(0.13 + rnd() * 0.14, 0.12 + rnd() * 0.24, 0.11 + rnd() * 0.12);
           local.y = (main.y + size.y) * 0.5;
           colorHex = rnd() < 0.65 ? STEEL_FACE : STEEL_SIDE;
         }
 
-        if (rnd() < 0.065) colorHex = PANEL;
+        if (!lowAntenna && rnd() < 0.065) colorHex = PANEL;
         pushBox({
           origin,
           quat: yaw,
@@ -366,13 +437,13 @@ export class Sanctum {
     };
 
     for (let layer = 0; layer < rings; layer++) {
-      const radius = baseRadius - layer * radiusStep;
+      const radius = baseRadius - layer * radiusStep + (layer === 0 ? 10.5 : layer === 1 ? 5.4 : 0);
       const y = layer * yStep;
       const slots = Math.max(24, Math.round(radius * 1.32));
       for (let slot = 0; slot < slots; slot++) {
         if (rnd() < 0.075) continue;
         const ang = (slot / slots) * TAU + signed() * 0.012;
-        buildCluster(ang, radius, y, layer, rnd() < 0.12);
+        buildCluster(ang, radius, y, layer, rnd() < (layer < 2 ? 0.24 : 0.12));
       }
     }
 
@@ -384,9 +455,9 @@ export class Sanctum {
       euler.set(signed() * 0.2, -ang + Math.PI / 2 + signed() * 0.22, signed() * 0.2);
       const quat = new THREE.Quaternion().setFromEuler(euler);
       const motion = makeMotion(ang, rings, false);
-      motion.tBreak = decayStart + 2.2 + decaySpan * rnd();
-      motion.vel.y += 0.24 + rnd() * 0.32;
-      motion.gravity = -0.015;
+      motion.tBreak = steelCrumbleAt + 0.4 + decaySpan * rnd();
+      motion.vel.y += -0.18 + rnd() * 0.18;
+      motion.gravity = -0.12 - rnd() * 0.1;
       pushBox({
         origin: new THREE.Vector3(Math.cos(ang) * radius, layerY + signed() * 1.4, Math.sin(ang) * radius),
         quat,
@@ -443,11 +514,12 @@ export class Sanctum {
       uColor: { value: new THREE.Color(HALO) },
     };
     this.halo = new THREE.Mesh(
-      new THREE.TorusGeometry(radius, 0.13, 12, 256),
+      new THREE.TorusGeometry(radius, 0.18, 16, 256),
       new THREE.ShaderMaterial({
         uniforms: this._haloUniforms,
         transparent: true,
         depthWrite: false,
+        depthTest: false,
         blending: THREE.AdditiveBlending,
         vertexShader: /* glsl */ `
           uniform float uT;
@@ -479,19 +551,29 @@ export class Sanctum {
           void main() {
             float age = max(uT - uT0, 0.0);
             float k = clamp(age / 4.0, 0.0, 1.0);
-            float cell = floor(vAng * 144.0) + floor(vUv.y * 12.0) * 19.0;
+            float ring = mod(vAng / 6.28318530718 + 1.0, 1.0);
+            vec2 hexUv = vec2(ring * 82.0, (vUv.y - 0.5) * 8.0);
+            float h1 = abs(fract(hexUv.x) - 0.5);
+            float h2 = abs(fract(hexUv.x * 0.5 + hexUv.y * 0.8660254) - 0.5);
+            float h3 = abs(fract(hexUv.x * 0.5 - hexUv.y * 0.8660254) - 0.5);
+            float honeyEdge = 1.0 - smoothstep(0.035, 0.095, min(min(h1, h2), h3));
+            float honeyDim = mix(0.52, 1.0, honeyEdge);
+            float cell = floor(ring * 164.0) + floor((vUv.y + 0.02) * 14.0) * 19.0;
             float shard = hash(cell);
-            if (k > 0.04 && shard < k * 0.9) discard;
+            if (k > 0.03 && shard < max(k - 0.035, 0.0) * 0.92) discard;
             float core = 1.0 - smoothstep(0.38, 0.5, abs(vUv.y - 0.5));
-            float fade = 1.0 - smoothstep(0.05, 1.0, k);
-            float alpha = uOpacity * (0.48 + 0.52 * core) * fade;
-            gl_FragColor = vec4(uColor * (1.3 + core * 0.75), alpha);
+            float fade = 1.0 - smoothstep(0.08, 0.95, k);
+            float ash = 1.0 - smoothstep(0.18, 0.78, k);
+            float alpha = uOpacity * (0.28 + 0.48 * core) * honeyDim * fade;
+            vec3 dimColor = mix(uColor * 0.46, uColor * (0.86 + core * 0.24), honeyEdge);
+            gl_FragColor = vec4(dimColor * (0.72 + 0.28 * ash), alpha);
           }
         `,
       })
     );
     this.halo.position.y = y;
     this.halo.rotation.x = Math.PI / 2;
+    this.halo.renderOrder = 3;
     this.group.add(this.halo);
 
     this._particleUniforms = {
@@ -531,6 +613,7 @@ export class Sanctum {
         uniforms: this._particleUniforms,
         transparent: true,
         depthWrite: false,
+        depthTest: false,
         blending: THREE.AdditiveBlending,
         vertexShader: /* glsl */ `
           attribute vec3 aVel;
@@ -566,6 +649,7 @@ export class Sanctum {
       })
     );
     this.haloParticles.frustumCulled = false;
+    this.haloParticles.renderOrder = 4;
     this.group.add(this.haloParticles);
   }
 
