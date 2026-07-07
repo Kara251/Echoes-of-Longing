@@ -113,6 +113,7 @@ export function runOpening({ stage, audio, onDone }) {
     !(matchMedia('(pointer: coarse)').matches && window.innerHeight > window.innerWidth);
 
   function start() {
+    stage.resetCamera();
     const root = buildDom();
     const $ = (sel) => root.querySelector(sel);
     const line = $('#op-line');

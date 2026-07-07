@@ -60,6 +60,15 @@ export class Stage {
     this.resize();
   }
 
+  resetCamera() {
+    if (this.camera.view?.enabled) this.camera.clearViewOffset();
+    this.camera.position.set(0, 0, 10);
+    this.camera.rotation.set(0, 0, 0);
+    this.camera.up.set(0, 1, 0);
+    this.camera.lookAt(0, 0, 0);
+    this.resize();
+  }
+
   resize() {
     const el = this.renderer.domElement;
     const w = el.clientWidth || window.innerWidth;

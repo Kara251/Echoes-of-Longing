@@ -43,12 +43,14 @@ async function boot() {
   const hud = new Hud({ clock, director });
   if (params.get('hud') === '1') hud.show();
   const player = new PlayerBar({ clock });
+  let performanceStarted = false;
 
   /**
    * 进入播放器。
    * TODO: 开场 → 播放器的过渡演出待 Kara 分镜，目前直接起播（空时间轴黑场）。
    */
   function enterPlayer({ hasAudio }) {
+    performanceStarted = true;
     if (hasAudio) clock.attachMedia(audio.el);
     const t0 = parseFloat(params.get('t') || '0');
     if (t0 > 0) clock.seek(t0);
@@ -74,7 +76,7 @@ async function boot() {
 
     clock.update(dt);
     const f = audio.analyse(dt);
-    director.update(clock.t, dt, f);
+    if (performanceStarted) director.update(clock.t, dt, f);
     hud.update();
     player.update();
     stage.render(dt, clock.t);

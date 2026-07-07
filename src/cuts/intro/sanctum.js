@@ -20,11 +20,11 @@ import { SkyDome } from '../../fx/sky.js';
 
 /* ---- 可调参数 ---- */
 const CAM = {
-  targetA: new THREE.Vector3(0, -4, 0), // 近景注视点（随金环下移三层，金线横贯画面中部）
-  targetB: new THREE.Vector3(0, -6, 0), // 全景注视点
-  radiusA: 19, // 置身第 2/3 层环带之间的空隙
-  radiusB: 110,
-  polarB: THREE.MathUtils.degToRad(108), // 全景俯仰：略低于环系仰视，环衬蓝天
+  targetA: new THREE.Vector3(0, -5.4, 0), // 近景注视点：穿入紧凑环系中层
+  targetB: new THREE.Vector3(0, -7.2, 0), // 全景注视点
+  radiusA: 62, // 外环近景向内看，避免随机大簇贴脸穿模
+  radiusB: 124,
+  polarB: THREE.MathUtils.degToRad(109), // 全景略仰视，环衬蓝天
   transIn: 11, // 拉远开始
   transOut: 14.5, // 拉远结束
   frameShift: 0.16, // 近景构图右移比例：殿堂落在 2/3 线（左 1/3 留给 Staff）
@@ -46,14 +46,30 @@ export class IntroSanctum extends Cut {
     const { stage } = this.ctx;
     const t0 = this.ctx.clock.t;
 
+    this._bloom = stage.bloom
+      ? {
+          strength: stage.bloom.strength,
+          threshold: stage.bloom.threshold,
+          radius: stage.bloom.radius,
+        }
+      : null;
+    if (stage.bloom) {
+      stage.bloom.strength = 0.18;
+      stage.bloom.threshold = 0.93;
+      stage.bloom.radius = 0.45;
+    }
+
     this.sky = new SkyDome(stage.scene);
     this.sanctum = new Sanctum();
     stage.scene.add(this.sanctum.group);
 
-    this.hemi = new THREE.HemisphereLight(0xdfeeff, 0x9aa8cc, 1.6);
-    this.dir = new THREE.DirectionalLight(0xffffff, 1.8);
-    this.dir.position.set(40, 80, 25);
-    stage.scene.add(this.hemi, this.dir);
+    this.ambient = new THREE.AmbientLight(0xd7e9f6, 0.72);
+    this.hemi = new THREE.HemisphereLight(0xf6fcff, 0xd4e4f0, 1.48);
+    this.dir = new THREE.DirectionalLight(0xffffff, 2.25);
+    this.dir.position.set(36, 82, 28);
+    this.fill = new THREE.DirectionalLight(0xe8f6ff, 1.65);
+    this.fill.position.set(-28, -54, -36);
+    stage.scene.add(this.ambient, this.hemi, this.dir, this.fill);
 
     // 初始相机按当前时间就位（seek 进入直接落在正确相位）
     const k = smoothstep(CAM.transIn, CAM.transOut, t0);
@@ -108,6 +124,7 @@ export class IntroSanctum extends Cut {
     } else if (stage.camera.view?.enabled) {
       stage.camera.clearViewOffset();
     }
+    this.sky.follow(stage.camera);
 
     // 淡入 / 淡出（时间驱动，seek 安全）
     const out = 1 - smoothstep(FADE.outFrom, FADE.outTo, t);
@@ -120,7 +137,12 @@ export class IntroSanctum extends Cut {
   exit() {
     const { stage } = this.ctx;
     this.controls?.dispose();
-    stage.scene.remove(this.sanctum.group, this.hemi, this.dir);
+    stage.scene.remove(this.sanctum.group, this.ambient, this.hemi, this.dir, this.fill);
+    if (stage.bloom && this._bloom) {
+      stage.bloom.strength = this._bloom.strength;
+      stage.bloom.threshold = this._bloom.threshold;
+      stage.bloom.radius = this._bloom.radius;
+    }
     this.sanctum.dispose();
     this.sky.dispose();
     if (stage.camera.view?.enabled) stage.camera.clearViewOffset();

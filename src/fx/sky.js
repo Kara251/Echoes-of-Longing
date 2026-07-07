@@ -56,6 +56,10 @@ export class SkyDome {
     this.uniforms.uMix.value = v;
   }
 
+  follow(camera) {
+    this.mesh.position.copy(camera.position);
+  }
+
   dispose() {
     this.scene.remove(this.mesh);
     this.mesh.geometry.dispose();
