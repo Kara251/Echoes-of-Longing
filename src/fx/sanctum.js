@@ -5,9 +5,10 @@ import * as THREE from 'three';
  *
  * 随机生成是设计要求：每次加载生成一座新的钢铁大陆，但随机只负责布局，
  * 不负责把画面打碎成噪声。每个结构簇都由主块、贴面、端舱、外挂舱、
- * 细桅和少量深冷灰机械嵌板组成，整体保持冷白钢铁质感。
+ * 内凹面板、细桅和少量深冷灰机械嵌板组成，整体保持冷白钢铁质感。
  *
- * 真光环是连续 torus shader：完整光带向上漂散，再由粒子云延续。
+ * 真光环是连续 torus shader：位于第三圈外侧，先于钢铁结构向上漂散，
+ * 再由粒子云延续。
  * 所有演出状态都是绝对时间 t 的纯函数，seek 安全。
  */
 const STEEL_TOP = 0xe9f4ff;
@@ -32,8 +33,9 @@ export class Sanctum {
     decayStart = 7.8,
     decaySpan = 13.8,
     breakRatio = 0.58,
-    haloRingIndex = 3,
-    haloDissolveAt = 7.1,
+    haloRingIndex = 2,
+    haloRadiusOffset = 2.2,
+    haloDissolveAt = 4.9,
   } = {}) {
     this.group = new THREE.Group();
 
@@ -99,6 +101,81 @@ export class Sanctum {
       pushColor(colorHex);
     };
 
+    const pushInsetPanel = ({ origin, quat, main, motion, anchor }) => {
+      const inset = new THREE.Vector3(
+        main.x * (0.18 + rnd() * 0.24),
+        0.03 + rnd() * 0.025,
+        main.z * (0.18 + rnd() * 0.24)
+      );
+      inset.x = Math.min(inset.x, main.x * 0.5);
+      inset.z = Math.min(inset.z, main.z * 0.54);
+
+      const x = anchor.x;
+      const z = anchor.z;
+      const floorY = main.y * 0.5 + 0.022;
+      const lipY = main.y * 0.5 + 0.06;
+      const lip = 0.045 + rnd() * 0.025;
+
+      pushBox({
+        origin,
+        quat,
+        local: new THREE.Vector3(x, floorY, z),
+        size: inset,
+        motion,
+        colorHex: PANEL,
+        jitter: 0.1 + rnd() * 0.2,
+      });
+
+      pushBox({
+        origin,
+        quat,
+        local: new THREE.Vector3(x - inset.x * 0.5 - lip * 0.5, lipY, z),
+        size: new THREE.Vector3(lip, 0.085, inset.z + lip * 2),
+        motion,
+        colorHex: STEEL_EDGE,
+        jitter: 0.12 + rnd() * 0.2,
+      });
+      pushBox({
+        origin,
+        quat,
+        local: new THREE.Vector3(x + inset.x * 0.5 + lip * 0.5, lipY, z),
+        size: new THREE.Vector3(lip, 0.085, inset.z + lip * 2),
+        motion,
+        colorHex: STEEL_FACE,
+        jitter: 0.12 + rnd() * 0.2,
+      });
+      pushBox({
+        origin,
+        quat,
+        local: new THREE.Vector3(x, lipY, z - inset.z * 0.5 - lip * 0.5),
+        size: new THREE.Vector3(inset.x + lip * 2, 0.08, lip),
+        motion,
+        colorHex: STEEL_EDGE,
+        jitter: 0.12 + rnd() * 0.2,
+      });
+      pushBox({
+        origin,
+        quat,
+        local: new THREE.Vector3(x, lipY, z + inset.z * 0.5 + lip * 0.5),
+        size: new THREE.Vector3(inset.x + lip * 2, 0.08, lip),
+        motion,
+        colorHex: STEEL_TOP,
+        jitter: 0.12 + rnd() * 0.2,
+      });
+
+      if (rnd() < 0.62) {
+        pushBox({
+          origin,
+          quat,
+          local: new THREE.Vector3(x, lipY + 0.018, z),
+          size: new THREE.Vector3(inset.x * (0.28 + rnd() * 0.24), 0.055, lip * 0.8),
+          motion,
+          colorHex: STEEL_SIDE,
+          jitter: 0.14 + rnd() * 0.2,
+        });
+      }
+    };
+
     const buildCluster = (ang, radius, y, layer, big) => {
       euler.set(0, -ang + Math.PI / 2, 0);
       yaw.setFromEuler(euler);
@@ -126,6 +203,19 @@ export class Sanctum {
         colorHex: rnd() < 0.62 ? STEEL_TOP : STEEL_FACE,
       });
 
+      if (rnd() < 0.66) {
+        const insetCount = 1 + Math.floor(rnd() * (big ? 3 : 2));
+        for (let i = 0; i < insetCount; i++) {
+          pushInsetPanel({
+            origin,
+            quat: yaw,
+            main,
+            motion,
+            anchor: new THREE.Vector3(signed() * main.x * 0.28, 0, signed() * main.z * 0.3),
+          });
+        }
+      }
+
       // 冷灰下缘压出厚度，近景才不会像纸片。
       if (rnd() < 0.84) {
         pushBox({
@@ -139,7 +229,7 @@ export class Sanctum {
         });
       }
 
-      const grooveCount = 2 + Math.floor(rnd() * (big ? 5 : 3));
+      const grooveCount = 1 + Math.floor(rnd() * (big ? 4 : 3));
       for (let i = 0; i < grooveCount; i++) {
         pushBox({
           origin,
@@ -329,7 +419,7 @@ export class Sanctum {
     this.group.add(this.steel);
 
     this._buildHalo({
-      radius: baseRadius - haloRingIndex * radiusStep + 0.45,
+      radius: baseRadius - haloRingIndex * radiusStep + haloRadiusOffset,
       y: haloRingIndex * yStep + 0.92,
       t0: haloDissolveAt,
       rnd,
