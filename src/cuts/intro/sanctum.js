@@ -27,6 +27,7 @@ const CAM = {
   polarB: THREE.MathUtils.degToRad(108), // 全景俯仰：略低于环系仰视，环衬蓝天
   transIn: 11, // 拉远开始
   transOut: 14.5, // 拉远结束
+  frameShift: 0.16, // 近景构图右移比例：殿堂落在 2/3 线（左 1/3 留给 Staff）
 };
 const FADE = {
   sanctumIn: 2.5,
@@ -97,6 +98,17 @@ export class IntroSanctum extends Cut {
     }
     this.controls.update();
 
+    // 近景构图右移（ED 式 1/3 划分），拉远时回正
+    const { stage } = this.ctx;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const shift = CAM.frameShift * (1 - k);
+    if (shift > 0.002) {
+      stage.camera.setViewOffset(vw, vh, -vw * shift, 0, vw, vh);
+    } else if (stage.camera.view?.enabled) {
+      stage.camera.clearViewOffset();
+    }
+
     // 淡入 / 淡出（时间驱动，seek 安全）
     const out = 1 - smoothstep(FADE.outFrom, FADE.outTo, t);
     this.sanctum.opacity = smoothstep(0, FADE.sanctumIn, t) * out;
@@ -111,6 +123,7 @@ export class IntroSanctum extends Cut {
     stage.scene.remove(this.sanctum.group, this.hemi, this.dir);
     this.sanctum.dispose();
     this.sky.dispose();
+    if (stage.camera.view?.enabled) stage.camera.clearViewOffset();
     stage.camera.position.set(0, 0, 10);
     stage.camera.lookAt(0, 0, 0);
   }
