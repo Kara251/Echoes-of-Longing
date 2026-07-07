@@ -20,9 +20,9 @@ import { SkyDome } from '../../fx/sky.js';
 
 /* ---- 可调参数 ---- */
 const CAM = {
-  targetA: new THREE.Vector3(0, 2, 0), // 近景注视点
+  targetA: new THREE.Vector3(0, -4, 0), // 近景注视点（随金环下移三层，金线横贯画面中部）
   targetB: new THREE.Vector3(0, -6, 0), // 全景注视点
-  radiusA: 24,
+  radiusA: 19, // 置身第 2/3 层环带之间的空隙
   radiusB: 110,
   polarB: THREE.MathUtils.degToRad(108), // 全景俯仰：略低于环系仰视，环衬蓝天
   transIn: 11, // 拉远开始
