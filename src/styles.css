@@ -266,6 +266,74 @@ html, body {
 }
 #op-hit.armed { pointer-events: auto; cursor: pointer; }
 
+#op-hint {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 26vh + 2.2rem);
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: var(--c-dusk);
+  opacity: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---- 生产播放器控制条 ---- */
+#player {
+  position: absolute;
+  left: 50%;
+  bottom: 3.5vh;
+  transform: translateX(-50%);
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 16px;
+  background: rgba(13, 13, 31, 0.55);
+  border: 1px solid rgba(185, 188, 224, 0.18);
+  border-radius: 3px;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+#player[data-visible] { opacity: 1; pointer-events: auto; }
+#pl-toggle {
+  background: none;
+  border: 0;
+  color: var(--c-ink);
+  font-size: 0.8rem;
+  width: 1.6em;
+  cursor: pointer;
+  padding: 0;
+}
+#pl-track {
+  position: relative;
+  width: clamp(180px, 38vw, 440px);
+  height: 3px;
+  background: rgba(185, 188, 224, 0.25);
+  cursor: pointer;
+  /* 扩大命中区 */
+  background-clip: content-box;
+  padding: 8px 0;
+}
+#pl-fill {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  height: 3px;
+  width: 0;
+  background: var(--c-halo);
+}
+#pl-time {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--c-mist);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* 窄屏：右列允许换行收窄，避免宽于右半屏 */
 @media (max-width: 780px) {
   #op-staff { max-width: 42vw; }

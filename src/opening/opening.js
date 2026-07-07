@@ -26,6 +26,8 @@ import { DustField } from './dust.js';
 const T = {
   titleIn: 1.8, // 标题升起淡入
   titleHold: 1.0, // 停留
+  titleMove: 0.85, // 标题先行让位（移至封面位）
+  lineDelay: 0.6, // 线段在标题让位后多久射出（保证不劈开标题）
   lineGrow: 0.5, // 线段生长
   split: 1.25, // 双边抽屉拉出
   carousel: 2.8, // 标题轮播每种语言的停留
@@ -84,6 +86,7 @@ function buildDom() {
       (t) => `<span class="lang ${t.cls}">${t.text}</span>`
     ).join('')}</div>
     <p id="op-tap">Tap Halo to Continue</p>
+    <p id="op-hint">Space &mdash; play / pause &nbsp;&middot;&nbsp; tap or move &mdash; progress bar</p>
     <button id="op-hit" aria-label="Tap halo to continue"></button>
   `;
   document.getElementById('app').appendChild(root);
@@ -118,6 +121,7 @@ export function runOpening({ stage, audio, onDone }) {
     const coverImg = cover.querySelector('img');
     const staff = $('#op-staff');
     const tap = $('#op-tap');
+    const hint = $('#op-hint');
     const hit = $('#op-hit');
     const langs = [...title.querySelectorAll('.lang')];
 
@@ -186,19 +190,19 @@ export function runOpening({ stage, audio, onDone }) {
     });
     tl.to({}, { duration: T.titleHold });
 
-    // 2 短线段自正中向上下射出；标题几乎同时开始让位，避免被线段劈开
-    tl.add('line');
-    tl.to(line, { scaleY: 1, duration: T.lineGrow, ease: 'power4.out' }, 'line');
-
-    // 双边像抽屉一样自线段后拉出（同始同终）；标题同时移至封面正上方
-    tl.add('split', `line+=${T.lineGrow * 0.15}`);
-    tl.to(cover, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
-    tl.to(staff, { x: 0, duration: T.split, ease: 'power3.out' }, 'split');
+    // 2 标题先行让位（快速移向封面位，彻底离开中线区）
+    tl.add('depart');
     tl.to(
       title,
-      { left: leftX, top: titleY, duration: T.split, ease: 'power3.inOut' },
-      'split'
+      { left: leftX, top: titleY, duration: T.titleMove, ease: 'power2.inOut' },
+      'depart'
     );
+
+    // 3 线段自正中向上下射出，双边同时像抽屉一样自线段后拉出（同始同终）
+    tl.add('reveal', `depart+=${T.lineDelay}`);
+    tl.to(line, { scaleY: 1, duration: T.lineGrow, ease: 'power4.out' }, 'reveal');
+    tl.to(cover, { x: 0, duration: T.split, ease: 'power3.out' }, 'reveal');
+    tl.to(staff, { x: 0, duration: T.split, ease: 'power3.out' }, 'reveal');
 
     // 拉出完成：撤下抽屉裁切（窄屏下右列可能宽于右半屏，继续裁切会切掉左缘）
     tl.call(() => root.classList.add('drawers-open'));
@@ -241,8 +245,9 @@ export function runOpening({ stage, audio, onDone }) {
     tl.to(stage.bloom, { strength: 0.9, duration: T.ringDraw, ease: 'power2.in' }, 'ring');
     tl.to(stage.bloom, { strength: 0.6, duration: 0.8, ease: 'power2.out' });
 
-    // 5 Tap 提示，开放点击
+    // 5 Tap 提示与操作说明，开放点击
     tl.to(tap, { opacity: 0.85, duration: T.tapIn, ease: 'power1.out' }, '<');
+    tl.to(hint, { opacity: 0.45, duration: T.tapIn, ease: 'power1.out' }, '<0.2');
     tl.call(() => {
       halo.breathe();
       hit.classList.add('armed');
@@ -307,7 +312,7 @@ export function runOpening({ stage, audio, onDone }) {
     function dispose(restoreBloom = true) {
       tl.kill();
       carousel?.kill();
-      gsap.killTweensOf([title, cover, staff, line, tap]);
+      gsap.killTweensOf([title, cover, staff, line, tap, hint]);
       gsap.killTweensOf(stage.bloom);
       halo.dispose();
       root.remove();

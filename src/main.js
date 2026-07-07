@@ -9,6 +9,7 @@ import { MasterClock } from './core/clock.js';
 import { AudioEngine } from './core/audio.js';
 import { Director } from './core/director.js';
 import { Hud } from './core/hud.js';
+import { PlayerBar } from './core/player.js';
 import { initRotateGate } from './core/orientation.js';
 import { runOpening } from './opening/opening.js';
 import { SONG } from './data/lyrics.js';
@@ -41,6 +42,7 @@ async function boot() {
 
   const hud = new Hud({ clock, director });
   if (params.get('hud') === '1') hud.show();
+  const player = new PlayerBar({ clock });
 
   /**
    * 进入播放器。
@@ -51,6 +53,7 @@ async function boot() {
     const t0 = parseFloat(params.get('t') || '0');
     if (t0 > 0) clock.seek(t0);
     clock.play();
+    player.activate();
   }
 
   // 开场演出直接使用 WebGL 舞台作背景，撤下黑场幕布
@@ -73,6 +76,7 @@ async function boot() {
     const f = audio.analyse(dt);
     director.update(clock.t, dt, f);
     hud.update();
+    player.update();
     stage.render(dt, clock.t);
 
     requestAnimationFrame(frame);

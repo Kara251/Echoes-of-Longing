@@ -52,16 +52,21 @@ export class Stage {
     this._veil = cineLayer.querySelector('#veil');
     this._flash = cineLayer.querySelector('#flash');
 
+    // 画布尺寸以实际盒子为准（ResizeObserver 兜底错过的 resize 事件），
+    // 且不让 three 写内联像素尺寸——canvas 永远按 CSS 铺满，
+    // 避免视口变化后画布与视口错位（光环等 3D 内容偏心）。
     window.addEventListener('resize', () => this.resize());
+    new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
   }
 
   resize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const el = this.renderer.domElement;
+    const w = el.clientWidth || window.innerWidth;
+    const h = el.clientHeight || window.innerHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
+    this.renderer.setSize(w, h, false);
     this.composer?.setSize(w, h);
   }
 
