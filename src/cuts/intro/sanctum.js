@@ -25,6 +25,7 @@ import { FallingField } from '../../fx/fall.js';
  */
 
 const SEA_Y = -70;
+const CONTINENT_BASE_Y = SEA_Y + 3.2;
 
 /* ---- 相机关键帧（可调） ---- */
 const CAM = {
@@ -77,8 +78,8 @@ export class IntroSanctum extends Cut {
     this.sanctum = new Sanctum();
     stage.scene.add(this.sanctum.group);
     this.sea = new Sea(stage.scene, { y: SEA_Y });
-    // 大陆基线压到水线下，只露上半截，配合缓慢下沉呈现半没入的钢铁城
-    this.continent = new Continent(stage.scene, { center: new THREE.Vector3(0, SEA_Y - 5, 0), radius: 95 });
+    // 大陆主体在镜头下潜时仍应高于水线；只有边缘贴水，后续再极缓慢沉没。
+    this.continent = new Continent(stage.scene, { center: new THREE.Vector3(0, CONTINENT_BASE_Y, 0), radius: 95 });
     this.fall = new FallingField(stage.scene, { seaY: SEA_Y });
 
     this.ambient = new THREE.AmbientLight(0xd7e9f6, 0.72);
