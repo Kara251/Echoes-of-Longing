@@ -10,8 +10,8 @@ import * as THREE from 'three';
  *   1) 下坠碎块 InstancedMesh；2) 入水扩散环 InstancedMesh（自定义 shader）；
  *   3) 溅起水花 Points。入水时刻 = 弹道落到海面 uSeaY 的解析解。
  */
+// 只用钢铁色：真光环早已（~5s）消散成粒子，坠落的只是宫殿钢铁碎块
 const STEEL = [0xe9f4ff, 0xd8e7f4, 0xc4d6e6, 0xaebfd0];
-const HALO = 0xffe9a8;
 
 export class FallingField {
   constructor(
@@ -53,7 +53,7 @@ export class FallingField {
         size: new THREE.Vector3(sz * (0.7 + rnd() * 0.8), sz * (0.5 + rnd() * 0.6), sz * (0.7 + rnd() * 0.8)),
         rot: new THREE.Vector3(signed() * 2.4, signed() * 2.4, signed() * 2.4),
         quat0: new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 6, rnd() * 6, rnd() * 6)),
-        colorHex: rnd() < 0.12 ? HALO : STEEL[(rnd() * STEEL.length) | 0],
+        colorHex: STEEL[(rnd() * STEEL.length) | 0],
         strength: big ? 1.0 : 0.42 + rnd() * 0.3,
       });
     };

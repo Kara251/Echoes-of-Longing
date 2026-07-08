@@ -68,16 +68,16 @@ html, body {
   white-space: normal;
 }
 
-/* 主歌一文字演出：左 1/3、逐字淡入的诗行 */
+/* 主歌一文字演出：左 1/3、竖排逐字淡入的诗列 */
 .lyric-verse { position: absolute; inset: 0; pointer-events: none; }
 .lyric-phrase {
   position: absolute;
-  transform: translateY(-50%);
-  white-space: nowrap;
+  writing-mode: vertical-rl;      /* 竖排：字从上往下排 */
+  text-orientation: upright;
   font-family: var(--font-jp);
   font-weight: 400;
   font-size: clamp(1.5rem, 3.3vw, 2.8rem);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;         /* 竖排下即字间纵向间距 */
   color: var(--c-ink);
   text-shadow: 0 0 22px rgba(150, 195, 240, 0.5), 0 0 4px rgba(230, 240, 255, 0.35);
 }

@@ -196,8 +196,8 @@ export class IntroSanctum extends Cut {
     this.continent.opacity = smoothstep(FADE.continentIn[0], FADE.continentIn[1], t) * worldOut;
     this.fall.opacity = smoothstep(FADE.fallIn[0], FADE.fallIn[1], t) * worldOut;
 
-    // 大陆缓慢下沉（沉没是漫长过程，前两句内只是若有若无地下沉，别抢戏）
-    this.continent.setSubmersion(smoothstep(19, 40, t) * 7);
+    // 大陆极缓下沉（沉没是漫长过程，前两句内几乎察觉不到，只是极慢地下沉）
+    this.continent.setSubmersion(Math.max(0, t - 20) * 0.11);
 
     // 可视化阵风：一阵阵地皱起海面
     const gust = 0.32 + 0.68 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.52 - 1.1), 2.0);
