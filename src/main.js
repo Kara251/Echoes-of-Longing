@@ -10,9 +10,10 @@ import { AudioEngine } from './core/audio.js';
 import { Director } from './core/director.js';
 import { Hud } from './core/hud.js';
 import { PlayerBar } from './core/player.js';
+import { Subtitle } from './core/subtitle.js';
 import { initRotateGate } from './core/orientation.js';
 import { runOpening } from './opening/opening.js';
-import { SONG } from './data/lyrics.js';
+import { SONG, LYRICS } from './data/lyrics.js';
 import { buildTimeline } from './data/timeline.js';
 
 // 不用顶层 await：旧移动浏览器不支持时会让整页脚本静默死亡
@@ -43,6 +44,7 @@ async function boot() {
   const hud = new Hud({ clock, director });
   if (params.get('hud') === '1') hud.show();
   const player = new PlayerBar({ clock });
+  const subtitle = new Subtitle({ lyrics: LYRICS });
   let performanceStarted = false;
 
   /**
@@ -76,7 +78,10 @@ async function boot() {
 
     clock.update(dt);
     const f = audio.analyse(dt);
-    if (performanceStarted) director.update(clock.t, dt, f);
+    if (performanceStarted) {
+      director.update(clock.t, dt, f);
+      subtitle.update(clock.t);
+    }
     hud.update();
     player.update();
     stage.render(dt, clock.t);
