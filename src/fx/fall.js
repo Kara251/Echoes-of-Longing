@@ -13,10 +13,15 @@ import * as THREE from 'three';
 // 只用钢铁色：真光环早已（~5s）消散成粒子，坠落的只是宫殿钢铁碎块
 const STEEL = [0xe9f4ff, 0xd8e7f4, 0xc4d6e6, 0xaebfd0];
 
+const smoothstep = (a, b, x) => {
+  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+};
+
 export class FallingField {
   constructor(
     scene,
-    { seaY = -70, seed = 77213, bigStart = 22, bigEnd = 28.6, fineStart = 27.4, fineEnd = 32.6 } = {}
+    { seaY = -70, seed = 77213, bigStart = 22, bigEnd = 29.4, fineStart = 26.8, fineEnd = 32.7 } = {}
   ) {
     this.scene = scene;
     this.seaY = seaY;
@@ -31,41 +36,115 @@ export class FallingField {
 
     // —— 预排程碎块 ——
     const chunks = [];
+    const impactAge = (y0, vy, g) => (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * (y0 - seaY)))) / g;
+
+    const pushChunk = ({
+      t0,
+      x,
+      z,
+      y0,
+      vx,
+      vy,
+      vz,
+      g,
+      sizeBase,
+      strength,
+      splitAt = Infinity,
+      splitLoss = 0,
+    }) => {
+      const tImpact = t0 + impactAge(y0, vy, g);
+      const c = {
+        t0,
+        tImpact,
+        x,
+        z,
+        y0,
+        vy,
+        g,
+        vx,
+        vz,
+        size: new THREE.Vector3(
+          sizeBase * (0.7 + rnd() * 0.78),
+          sizeBase * (0.38 + rnd() * 0.48),
+          sizeBase * (0.66 + rnd() * 0.72)
+        ),
+        rot: new THREE.Vector3(signed() * 1.25, signed() * 1.45, signed() * 1.35),
+        quat0: new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 6, rnd() * 6, rnd() * 6)),
+        colorHex: STEEL[(rnd() * STEEL.length) | 0],
+        strength,
+        splitAt,
+        splitLoss,
+      };
+      chunks.push(c);
+      return c;
+    };
+
+    const positionAt = (c, age, out) => {
+      out.set(c.x + c.vx * age, c.y0 + c.vy * age - 0.5 * c.g * age * age, c.z + c.vz * age);
+      return out;
+    };
+    const splitPoint = new THREE.Vector3();
+
+    const peelChildren = (parent) => {
+      const splitAt = Math.min(parent.tImpact - 0.85, parent.t0 + 1.05 + rnd() * 2.05);
+      if (splitAt <= parent.t0 + 0.55) return;
+
+      parent.splitAt = splitAt;
+      parent.splitLoss = 0.22 + rnd() * 0.2;
+      const age = splitAt - parent.t0;
+      positionAt(parent, age, splitPoint);
+
+      const childN = 4 + Math.floor(rnd() * 8);
+      for (let i = 0; i < childN; i++) {
+        const t0 = splitAt + rnd() * 0.42;
+        const y0 = Math.max(seaY + 5.5, splitPoint.y + signed() * 1.2);
+        const g = 1.75 + rnd() * 1.15;
+        pushChunk({
+          t0,
+          x: splitPoint.x + signed() * 1.25,
+          z: splitPoint.z + signed() * 1.25,
+          y0,
+          vx: parent.vx + signed() * (0.36 + rnd() * 0.52),
+          vy: parent.vy + signed() * 0.36 - 0.12,
+          vz: parent.vz + signed() * (0.36 + rnd() * 0.52),
+          g,
+          sizeBase: 0.16 + rnd() * 0.5,
+          strength: 0.18 + rnd() * 0.24,
+        });
+      }
+    };
+
     // 坠落点收拢到相机正视的近前海面（相机看向 ~(14,44)），入水反应更突出
     const spawnChunk = (t0, big) => {
       const ang = rnd() * Math.PI * 2;
       const rr = 4 + rnd() * 42;
       const x = 12 + Math.cos(ang) * rr;
       const z = 34 + Math.sin(ang) * rr;
-      const y0 = seaY + 40 + rnd() * 34;
-      const g = 8 + rnd() * 4;
-      const tImpact = t0 + Math.sqrt((2 * (y0 - seaY)) / g);
-      const sz = big ? 2.0 + rnd() * 3.4 : 0.4 + rnd() * 0.8;
-      chunks.push({
+      const y0 = seaY + (big ? 24 + rnd() * 36 : 16 + rnd() * 28);
+      const g = big ? 2.05 + rnd() * 1.05 : 2.25 + rnd() * 1.25;
+      const chunk = pushChunk({
         t0,
-        tImpact,
         x,
         z,
         y0,
+        vx: signed() * (big ? 0.48 : 0.68),
+        vy: signed() * (big ? 0.22 : 0.34) - (big ? 0.1 : 0.02),
+        vz: signed() * (big ? 0.48 : 0.68),
         g,
-        vx: signed() * 1.2,
-        vz: signed() * 1.2,
-        size: new THREE.Vector3(sz * (0.7 + rnd() * 0.8), sz * (0.5 + rnd() * 0.6), sz * (0.7 + rnd() * 0.8)),
-        rot: new THREE.Vector3(signed() * 2.4, signed() * 2.4, signed() * 2.4),
-        quat0: new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 6, rnd() * 6, rnd() * 6)),
-        colorHex: STEEL[(rnd() * STEEL.length) | 0],
-        strength: big ? 1.0 : 0.42 + rnd() * 0.3,
+        sizeBase: big ? 0.82 + rnd() * 1.46 : 0.17 + rnd() * 0.44,
+        strength: big ? 0.62 + rnd() * 0.28 : 0.22 + rnd() * 0.22,
       });
+      if (big && rnd() < 0.88) peelChildren(chunk);
     };
 
-    const bigN = 36;
+    const bigN = 52;
     for (let i = 0; i < bigN; i++) {
-      const t0 = bigStart + (bigEnd - bigStart) * Math.pow(i / bigN, 0.9) + signed() * 0.3;
+      const t0 = bigStart + (bigEnd - bigStart) * Math.pow(i / bigN, 1.05) + signed() * 0.25;
       spawnChunk(t0, true);
     }
-    const fineN = 96;
+    const fineN = 150;
     for (let i = 0; i < fineN; i++) {
-      const t0 = fineStart + (fineEnd - fineStart) * (i / fineN) + signed() * 0.25;
+      const t0 = fineStart + (fineEnd - fineStart) * (i / fineN) + signed() * 0.22;
       spawnChunk(t0, false);
     }
     this._chunks = chunks;
@@ -195,17 +274,17 @@ export class FallingField {
     // —— 溅起水花 Points ——
     const drops = [];
     chunks.forEach((c) => {
-      const n = c.strength > 0.8 ? 24 : 9;
+      const n = c.strength > 0.7 ? 18 : c.strength > 0.34 ? 7 : 4;
       for (let i = 0; i < n; i++) {
         const a = rnd() * Math.PI * 2;
-        const sp = (c.strength > 0.8 ? 4.2 : 1.8) * (0.5 + rnd());
+        const sp = (c.strength > 0.7 ? 3.2 : 1.35) * (0.5 + rnd());
         drops.push({
           t0: c.tImpact,
           x: c.x + Math.cos(a) * 0.5,
           z: c.z + Math.sin(a) * 0.5,
           vx: Math.cos(a) * sp,
           vz: Math.sin(a) * sp,
-          vy: (c.strength > 0.8 ? 7.5 : 3.6) * (0.6 + rnd() * 0.7),
+          vy: (c.strength > 0.7 ? 6.2 : 3.0) * (0.6 + rnd() * 0.7),
           life: 0.8 + rnd() * 0.8,
           size: 0.14 + rnd() * 0.2,
         });
@@ -307,11 +386,15 @@ export class FallingField {
         m.makeScale(0, 0, 0);
       } else {
         const dt = t - c.t0;
-        p.set(c.x + c.vx * dt, c.y0 - 0.5 * c.g * dt * dt, c.z + c.vz * dt);
+        p.set(c.x + c.vx * dt, c.y0 + c.vy * dt - 0.5 * c.g * dt * dt, c.z + c.vz * dt);
         e.set(c.rot.x * dt, c.rot.y * dt, c.rot.z * dt);
         qd.setFromEuler(e);
         q.multiplyQuaternions(c.quat0, qd);
-        m.compose(p, q, sc.copy(c.size));
+        sc.copy(c.size);
+        if (c.splitAt !== Infinity) {
+          sc.multiplyScalar(1 - c.splitLoss * smoothstep(c.splitAt, c.splitAt + 1.7, t));
+        }
+        m.compose(p, q, sc);
       }
       this.chunkMesh.setMatrixAt(i, m);
     }

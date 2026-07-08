@@ -22,6 +22,10 @@ const HALO_PARTICLES = 1400;
 const SESSION_SEED = (Math.random() * 0xffffffff) >>> 0;
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
+const smoothstep = (a, b, x) => {
+  const k = clamp01((x - a) / (b - a));
+  return k * k * (3 - 2 * k);
+};
 
 export class Sanctum {
   constructor({
@@ -72,13 +76,13 @@ export class Sanctum {
       return {
         tBreak: broken,
         vel: outward
-          .multiplyScalar(0.18 + rnd() * 0.72)
-          .addScaledVector(tangent, signed() * 0.34)
-          .add(new THREE.Vector3(signed() * 0.12, 0.04 + rnd() * 0.26, signed() * 0.12)),
-        angVel: new THREE.Vector3(signed() * 1.05, signed() * 0.95, signed() * 1.15),
-        gravity: -0.11 - rnd() * 0.12,
-        dissolve: 4.6 + rnd() * 3.8,
-        floatAmp: 0.16 + rnd() * 0.38,
+          .multiplyScalar(0.08 + rnd() * 0.42)
+          .addScaledVector(tangent, signed() * 0.22)
+          .add(new THREE.Vector3(signed() * 0.08, 0.02 + rnd() * 0.13, signed() * 0.08)),
+        angVel: new THREE.Vector3(signed() * 0.68, signed() * 0.62, signed() * 0.72),
+        gravity: -0.035 - rnd() * 0.055,
+        dissolve: 5.8 + rnd() * 5.0,
+        floatAmp: 0.2 + rnd() * 0.42,
         floatFreq: 0.32 + rnd() * 0.62,
         phase: rnd() * TAU,
       };
@@ -97,6 +101,8 @@ export class Sanctum {
       gravityBoost = 0,
       angVelBoost = 1,
       dissolveScale = 1,
+      splitAt = Infinity,
+      splitLoss = 0,
     }) => {
       const tBreak =
         breakAt ?? (motion.tBreak === Infinity ? Infinity : motion.tBreak + jitter + rnd() * 0.28);
@@ -118,6 +124,8 @@ export class Sanctum {
         floatAmp: motion.floatAmp,
         floatFreq: motion.floatFreq,
         phase: motion.phase + rnd() * TAU,
+        splitAt,
+        splitLoss,
       });
       pushColor(colorHex);
     };
@@ -198,29 +206,30 @@ export class Sanctum {
     };
 
     const pushFallingChips = ({ origin, quat, main, motion, layer, ang, big }) => {
-      if (rnd() > (big ? 0.82 : 0.56)) return;
+      if (rnd() > (big ? 0.95 : 0.72)) return;
 
       const outward = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
       const tangent = new THREE.Vector3(-Math.sin(ang), 0, Math.cos(ang));
-      const chipCount = 2 + Math.floor(rnd() * (big ? 7 : 5));
+      const chipCount = 4 + Math.floor(rnd() * (big ? 10 : 7));
+      const parentBreak = Number.isFinite(motion.tBreak) ? motion.tBreak : steelCrumbleAt + 1.1 + rnd() * 1.8;
       for (let i = 0; i < chipCount; i++) {
         const local = new THREE.Vector3(
           signed() * main.x * 0.46,
           signed() * main.y * 0.34,
           signed() * main.z * 0.48
         );
-        const flat = rnd() < 0.64;
+        const flat = rnd() < 0.76;
         const size = new THREE.Vector3(
-          main.x * (0.04 + rnd() * 0.1),
-          flat ? 0.06 + rnd() * 0.08 : main.y * (0.08 + rnd() * 0.16),
-          main.z * (0.08 + rnd() * 0.2)
+          main.x * (0.018 + rnd() * 0.06),
+          flat ? 0.035 + rnd() * 0.055 : main.y * (0.035 + rnd() * 0.09),
+          main.z * (0.035 + rnd() * 0.12)
         );
-        const breakAt = steelCrumbleAt + rnd() * 2.2 + layer * 0.1;
+        const breakAt = parentBreak + 0.55 + rnd() * 2.9 + layer * 0.08;
         const velBoost = outward
           .clone()
-          .multiplyScalar(0.08 + rnd() * 0.32)
-          .addScaledVector(tangent, signed() * 0.36)
-          .add(new THREE.Vector3(signed() * 0.08, -0.28 - rnd() * 0.34, signed() * 0.08));
+          .multiplyScalar(0.04 + rnd() * 0.18)
+          .addScaledVector(tangent, signed() * 0.22)
+          .add(new THREE.Vector3(signed() * 0.06, -0.06 - rnd() * 0.18, signed() * 0.06));
 
         pushBox({
           origin,
@@ -231,9 +240,9 @@ export class Sanctum {
           colorHex: rnd() < 0.58 ? STEEL_FACE : STEEL_SIDE,
           breakAt,
           velBoost,
-          gravityBoost: -0.16 - rnd() * 0.12,
-          angVelBoost: 1.8 + rnd() * 1.2,
-          dissolveScale: 0.66 + rnd() * 0.34,
+          gravityBoost: -0.035 - rnd() * 0.06,
+          angVelBoost: 1.35 + rnd() * 0.9,
+          dissolveScale: 0.78 + rnd() * 0.42,
         });
       }
     };
@@ -268,6 +277,8 @@ export class Sanctum {
         size: main,
         motion,
         colorHex: rnd() < 0.62 ? STEEL_TOP : STEEL_FACE,
+        splitAt: Number.isFinite(motion.tBreak) ? motion.tBreak + 0.95 + rnd() * 2.15 : Infinity,
+        splitLoss: big ? 0.26 + rnd() * 0.12 : 0.14 + rnd() * 0.1,
       });
 
       pushFallingChips({ origin, quat: yaw, main, motion, layer, ang, big });
@@ -448,7 +459,7 @@ export class Sanctum {
     }
 
     // 漂浮细碎片：比主体小得多，只强化破碎时的空间感。
-    for (let i = 0; i < 180; i++) {
+    for (let i = 0; i < 240; i++) {
       const ang = rnd() * TAU;
       const radius = baseRadius * (0.38 + rnd() * 0.82);
       const layerY = -Math.abs(yStep) * (rnd() * (rings - 1));
@@ -456,13 +467,13 @@ export class Sanctum {
       const quat = new THREE.Quaternion().setFromEuler(euler);
       const motion = makeMotion(ang, rings, false);
       motion.tBreak = steelCrumbleAt + 0.4 + decaySpan * rnd();
-      motion.vel.y += -0.18 + rnd() * 0.18;
-      motion.gravity = -0.12 - rnd() * 0.1;
+      motion.vel.y += -0.06 + rnd() * 0.12;
+      motion.gravity = -0.035 - rnd() * 0.045;
       pushBox({
         origin: new THREE.Vector3(Math.cos(ang) * radius, layerY + signed() * 1.4, Math.sin(ang) * radius),
         quat,
         local: new THREE.Vector3(0, 0, 0),
-        size: new THREE.Vector3(0.24 + rnd() * 0.95, 0.08 + rnd() * 0.26, 0.1 + rnd() * 0.34),
+        size: new THREE.Vector3(0.12 + rnd() * 0.48, 0.04 + rnd() * 0.16, 0.06 + rnd() * 0.22),
         motion,
         colorHex: rnd() < 0.7 ? STEEL_FACE : STEEL_SIDE,
         jitter: rnd() * 0.6,
@@ -687,6 +698,9 @@ export class Sanctum {
           qd.setFromEuler(e);
           q.multiplyQuaternions(it.quat, qd);
           sc.copy(it.scale).multiplyScalar(1 - k * k);
+          if (it.splitAt !== Infinity) {
+            sc.multiplyScalar(1 - it.splitLoss * smoothstep(it.splitAt, it.splitAt + 1.9, t));
+          }
           m.compose(p, q, sc);
         }
       }
