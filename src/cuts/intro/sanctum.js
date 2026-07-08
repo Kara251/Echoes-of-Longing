@@ -77,7 +77,8 @@ export class IntroSanctum extends Cut {
     this.sanctum = new Sanctum();
     stage.scene.add(this.sanctum.group);
     this.sea = new Sea(stage.scene, { y: SEA_Y });
-    this.continent = new Continent(stage.scene, { center: new THREE.Vector3(0, SEA_Y, 0), radius: 95 });
+    // 大陆基线压到水线下，只露上半截，配合缓慢下沉呈现半没入的钢铁城
+    this.continent = new Continent(stage.scene, { center: new THREE.Vector3(0, SEA_Y - 5, 0), radius: 95 });
     this.fall = new FallingField(stage.scene, { seaY: SEA_Y });
 
     this.ambient = new THREE.AmbientLight(0xd7e9f6, 0.72);
@@ -195,8 +196,8 @@ export class IntroSanctum extends Cut {
     this.continent.opacity = smoothstep(FADE.continentIn[0], FADE.continentIn[1], t) * worldOut;
     this.fall.opacity = smoothstep(FADE.fallIn[0], FADE.fallIn[1], t) * worldOut;
 
-    // 大陆持续下沉（前奏后段已开始，主歌一内缓缓没入，末尾仍有高塔露出）
-    this.continent.setSubmersion(smoothstep(17, 34, t) * 15);
+    // 大陆缓慢下沉（沉没是漫长过程，前两句内只是若有若无地下沉，别抢戏）
+    this.continent.setSubmersion(smoothstep(19, 40, t) * 7);
 
     // 可视化阵风：一阵阵地皱起海面
     const gust = 0.32 + 0.68 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.52 - 1.1), 2.0);

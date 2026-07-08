@@ -31,15 +31,16 @@ export class FallingField {
 
     // —— 预排程碎块 ——
     const chunks = [];
+    // 坠落点收拢到相机正视的近前海面（相机看向 ~(14,44)），入水反应更突出
     const spawnChunk = (t0, big) => {
       const ang = rnd() * Math.PI * 2;
-      const rr = 8 + rnd() * 78;
-      const x = Math.cos(ang) * rr;
-      const z = Math.sin(ang) * rr;
+      const rr = 4 + rnd() * 42;
+      const x = 12 + Math.cos(ang) * rr;
+      const z = 34 + Math.sin(ang) * rr;
       const y0 = seaY + 40 + rnd() * 34;
       const g = 8 + rnd() * 4;
       const tImpact = t0 + Math.sqrt((2 * (y0 - seaY)) / g);
-      const sz = big ? 1.4 + rnd() * 2.6 : 0.4 + rnd() * 0.8;
+      const sz = big ? 2.0 + rnd() * 3.4 : 0.4 + rnd() * 0.8;
       chunks.push({
         t0,
         tImpact,
@@ -90,7 +91,7 @@ export class FallingField {
     const aData = new Float32Array(chunks.length * 3); // t0impact, maxScale, strength
     chunks.forEach((c, i) => {
       aData[i * 3] = c.tImpact;
-      aData[i * 3 + 1] = (c.strength > 0.8 ? 11 : 5) + rnd() * 3.5;
+      aData[i * 3 + 1] = (c.strength > 0.8 ? 20 : 9) + rnd() * 6;
       aData[i * 3 + 2] = c.strength;
     });
     ringGeo.setAttribute('aData', new THREE.InstancedBufferAttribute(aData, 3));
@@ -107,9 +108,9 @@ export class FallingField {
           varying float vAlpha;
           void main() {
             float age = uT - aData.x;
-            float dur = 2.4;
+            float dur = 2.9;
             float k = clamp(age / dur, 0.0, 1.0);
-            float scale = mix(0.4, aData.y, 1.0 - pow(1.0 - k, 2.0));
+            float scale = mix(0.6, aData.y, 1.0 - pow(1.0 - k, 2.2));
             vAlpha = (age > 0.0 && k < 1.0) ? (1.0 - k) * (1.0 - k) * aData.z : 0.0;
             vec3 p = position * scale;
             gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
@@ -120,7 +121,7 @@ export class FallingField {
           uniform float uOpacity;
           varying float vAlpha;
           void main() {
-            gl_FragColor = vec4(uColor, vAlpha * uOpacity * 1.15);
+            gl_FragColor = vec4(uColor, vAlpha * uOpacity * 1.35);
           }
         `,
       }),
@@ -136,22 +137,77 @@ export class FallingField {
     this.rings.renderOrder = 1;
     this.group.add(this.rings);
 
+    // —— 入水白沫盘（比涟漪环更亮、更快的水面反应）——
+    const foamGeo = new THREE.CircleGeometry(1, 36);
+    foamGeo.rotateX(-Math.PI / 2);
+    const fData = new Float32Array(chunks.length * 3); // t0, maxScale, strength
+    chunks.forEach((c, i) => {
+      fData[i * 3] = c.tImpact;
+      fData[i * 3 + 1] = (c.strength > 0.8 ? 6.5 : 3) + rnd() * 2;
+      fData[i * 3 + 2] = c.strength;
+    });
+    foamGeo.setAttribute('aData', new THREE.InstancedBufferAttribute(fData, 3));
+    this._foamUniforms = { uT: { value: 0 }, uOpacity: { value: 0 }, uColor: { value: new THREE.Color(0xf2f9ff) } };
+    this.foam = new THREE.InstancedMesh(
+      foamGeo,
+      new THREE.ShaderMaterial({
+        uniforms: this._foamUniforms,
+        transparent: true,
+        depthWrite: false,
+        vertexShader: /* glsl */ `
+          attribute vec3 aData;
+          uniform float uT;
+          varying float vAlpha;
+          varying vec2 vXz;
+          void main() {
+            float age = uT - aData.x;
+            float dur = 0.95;
+            float k = clamp(age / dur, 0.0, 1.0);
+            float scale = mix(0.5, aData.y, 1.0 - pow(1.0 - k, 3.0));
+            vAlpha = (age > 0.0 && k < 1.0) ? pow(1.0 - k, 1.4) * aData.z : 0.0;
+            vXz = position.xz;
+            vec3 p = position * scale;
+            gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          varying float vAlpha;
+          varying vec2 vXz;
+          void main() {
+            float edge = smoothstep(1.0, 0.35, length(vXz)); // 中心实、边缘软
+            gl_FragColor = vec4(uColor, vAlpha * uOpacity * edge * 0.85);
+          }
+        `,
+      }),
+      chunks.length
+    );
+    chunks.forEach((c, i) => {
+      m.makeTranslation(c.x, seaY + 0.05, c.z);
+      this.foam.setMatrixAt(i, m);
+    });
+    this.foam.instanceMatrix.needsUpdate = true;
+    this.foam.frustumCulled = false;
+    this.foam.renderOrder = 1;
+    this.group.add(this.foam);
+
     // —— 溅起水花 Points ——
     const drops = [];
     chunks.forEach((c) => {
-      const n = c.strength > 0.8 ? 14 : 6;
+      const n = c.strength > 0.8 ? 24 : 9;
       for (let i = 0; i < n; i++) {
         const a = rnd() * Math.PI * 2;
-        const sp = (c.strength > 0.8 ? 2.4 : 1.2) * (0.5 + rnd());
+        const sp = (c.strength > 0.8 ? 4.2 : 1.8) * (0.5 + rnd());
         drops.push({
           t0: c.tImpact,
-          x: c.x + Math.cos(a) * 0.4,
-          z: c.z + Math.sin(a) * 0.4,
+          x: c.x + Math.cos(a) * 0.5,
+          z: c.z + Math.sin(a) * 0.5,
           vx: Math.cos(a) * sp,
           vz: Math.sin(a) * sp,
-          vy: (c.strength > 0.8 ? 4.5 : 2.6) * (0.6 + rnd() * 0.7),
-          life: 0.7 + rnd() * 0.7,
-          size: 0.1 + rnd() * 0.14,
+          vy: (c.strength > 0.8 ? 7.5 : 3.6) * (0.6 + rnd() * 0.7),
+          life: 0.8 + rnd() * 0.8,
+          size: 0.14 + rnd() * 0.2,
         });
       }
     });
@@ -201,7 +257,7 @@ export class FallingField {
             p.y -= 0.5 * uG * max(age, 0.0) * max(age, 0.0);
             vec4 mv = modelViewMatrix * vec4(p, 1.0);
             gl_Position = projectionMatrix * mv;
-            gl_PointSize = min(aMeta.z * uScale / max(-mv.z, 0.1), 14.0);
+            gl_PointSize = min(aMeta.z * uScale / max(-mv.z, 0.1), 20.0);
             vAlpha = (age > 0.0 && k < 1.0) ? (1.0 - k) : 0.0;
           }
         `,
@@ -234,11 +290,13 @@ export class FallingField {
   set opacity(v) {
     this._chunkMat.opacity = v;
     this._ringUniforms.uOpacity.value = v;
+    this._foamUniforms.uOpacity.value = v;
     this._dropUniforms.uOpacity.value = v;
   }
 
   update(t) {
     this._ringUniforms.uT.value = t;
+    this._foamUniforms.uT.value = t;
     this._dropUniforms.uT.value = t;
 
     const { _m: m, _p: p, _q: q, _qd: qd, _e: e, _sc: sc } = this;
@@ -268,6 +326,9 @@ export class FallingField {
     this.rings.dispose();
     this.rings.geometry.dispose();
     this.rings.material.dispose();
+    this.foam.dispose();
+    this.foam.geometry.dispose();
+    this.foam.material.dispose();
     this.drops.geometry.dispose();
     this.drops.material.dispose();
   }

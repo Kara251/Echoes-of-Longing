@@ -93,23 +93,28 @@ export class Continent {
           );
         }
 
-        // 顶面细碎结构：塔、天线、机械嵌板（细腻感，中心区更密）
+        // 顶面结构：敦实的分级楼块 / 屋顶机械面 / 低矮机库（无细针天线）
         const detail = rMid < radius * 0.6 ? 1 + Math.floor(rnd() * 3) : Math.floor(rnd() * 2);
         for (let d = 0; d < detail; d++) {
           const kind = rnd();
-          const lx = x + signed() * plotW * 0.4;
-          const lz = z + signed() * plotD * 0.4;
-          if (kind < 0.4) {
-            const tw = 0.6 + rnd() * 1.6;
-            const tht = 1.5 + rnd() * 6;
-            push(lx, topY + tht * 0.5, lz, tw, tht, tw, rnd() < 0.7 ? TOP : FACE, 0.05);
-          } else if (kind < 0.62) {
-            push(lx, topY + (2 + rnd() * 5), lz, 0.18, 3 + rnd() * 5, 0.18, SIDE, 0.03); // 天线
-          } else if (kind < 0.85) {
-            push(lx, topY + 0.4, lz, 0.8 + rnd() * 1.6, 0.5, 0.8 + rnd() * 1.6, PANEL, 0); // 嵌板
+          const lx = x + signed() * plotW * 0.35;
+          const lz = z + signed() * plotD * 0.35;
+          if (kind < 0.5) {
+            // 塔楼：宽而分级，不是细针
+            const tw = 1.6 + rnd() * 2.8;
+            const td = tw * (0.7 + rnd() * 0.5);
+            const tht = 2 + rnd() * 5;
+            push(lx, topY + tht * 0.5, lz, tw, tht, td, rnd() < 0.7 ? TOP : FACE, 0.05);
+            if (rnd() < 0.6) {
+              push(lx, topY + tht + 0.5, lz, tw * 0.6, 0.9 + rnd() * 1.6, td * 0.6, rnd() < 0.6 ? FACE : SIDE, 0.05);
+            }
+          } else if (kind < 0.78) {
+            // 屋顶机械面 / 平嵌板
+            push(lx, topY + 0.35, lz, 1.0 + rnd() * 2.0, 0.4 + rnd() * 0.4, 1.0 + rnd() * 2.0, rnd() < 0.5 ? PANEL : SIDE, 0.04);
           } else {
-            const bw = 1.2 + rnd() * 2.6;
-            push(lx, topY + 0.8, lz, bw, 1.4 + rnd() * 1.6, bw * (0.6 + rnd() * 0.5), rnd() < 0.6 ? FACE : SIDE, 0.05);
+            // 低矮机库块
+            const bw = 1.4 + rnd() * 3.0;
+            push(lx, topY + 0.9, lz, bw, 1.2 + rnd() * 1.8, bw * (0.6 + rnd() * 0.6), rnd() < 0.6 ? FACE : SIDE, 0.05);
           }
         }
       }
