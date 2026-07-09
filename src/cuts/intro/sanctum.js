@@ -37,6 +37,10 @@ const CAM = {
   seaTarget: new THREE.Vector3(14, -68, 44),
   seaRadius: 74,
   seaPolar: THREE.MathUtils.degToRad(87),
+  seaWideTarget: new THREE.Vector3(30, -68, 78),
+  seaWideRadius: 150,
+  seaWidePolar: THREE.MathUtils.degToRad(82),
+  seaWideIn: 27.4,
   seaAzimuth: 1.05,
   pullIn: 11,
   pullOut: 14.5,
@@ -130,9 +134,13 @@ export class IntroSanctum extends Cut {
       const k = smoothstep(CAM.descendIn, CAM.descendOut, t);
       lerpV(target, CAM.panoTarget, CAM.seaTarget, k);
       radius = THREE.MathUtils.lerp(CAM.panoRadius, CAM.seaRadius, k);
-    } else {
+    } else if (t < CAM.seaWideIn) {
       target.copy(CAM.seaTarget);
       radius = CAM.seaRadius;
+    } else {
+      const k = smoothstep(CAM.seaWideIn, 30.6, t);
+      lerpV(target, CAM.seaTarget, CAM.seaWideTarget, k);
+      radius = THREE.MathUtils.lerp(CAM.seaRadius, CAM.seaWideRadius, k);
     }
     // 用于 enter() 初始就位的 polar/azimuth（运行期由 controls 管理）
     const polar =
@@ -140,7 +148,9 @@ export class IntroSanctum extends Cut {
         ? THREE.MathUtils.degToRad(100)
         : t < CAM.descendOut
         ? THREE.MathUtils.lerp(THREE.MathUtils.degToRad(100), CAM.seaPolar, smoothstep(CAM.pullIn, CAM.descendOut, t))
-        : CAM.seaPolar;
+        : t < CAM.seaWideIn
+        ? CAM.seaPolar
+        : THREE.MathUtils.lerp(CAM.seaPolar, CAM.seaWidePolar, smoothstep(CAM.seaWideIn, 30.6, t));
     return { target, radius, polar, azimuth: CAM.seaAzimuth };
   }
 
@@ -181,7 +191,8 @@ export class IntroSanctum extends Cut {
     // 构图右移（近景 0–11 与海景 22–32），拉远/俯冲时回正
     const nearShift = 1 - smoothstep(CAM.pullIn, CAM.pullOut, t);
     const seaShift = smoothstep(CAM.descendIn, CAM.descendOut, t);
-    const shift = CAM.frameShift * Math.max(t < CAM.descendIn ? nearShift : 0, seaShift);
+    const lateWide = 1 - smoothstep(CAM.seaWideIn, 30.6, t) * 0.45;
+    const shift = CAM.frameShift * lateWide * Math.max(t < CAM.descendIn ? nearShift : 0, seaShift);
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     if (shift > 0.002) stage.camera.setViewOffset(vw, vh, -vw * shift, 0, vw, vh);
@@ -200,8 +211,8 @@ export class IntroSanctum extends Cut {
     // 大陆极缓下沉（沉没是漫长过程，保留上一版速度的 1/10）
     this.continent.setSubmersion(Math.max(0, t - 20) * 0.011);
 
-    // 可视化阵风：一阵阵地皱起海面
-    const gust = 0.32 + 0.68 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.52 - 1.1), 2.0);
+    // 可视化阵风：主要表现为海面风痕，几何起伏保持克制。
+    const gust = 0.44 + 0.56 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.52 - 1.1), 2.0);
 
     this.sanctum.update(t);
     this.sea.update(t, stage.camera.position, gust);

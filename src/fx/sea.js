@@ -46,12 +46,12 @@ export class Sea {
           float d = dot(p, uWind);
           vec2 perp = vec2(-uWind.y, uWind.x);
           float a = 0.0;
-          a += sin(d * 0.045 - t * 0.9) * 1.35;
-          a += sin(d * 0.10 + t * 1.25) * 0.62;
-          a += sin(dot(p, perp) * 0.075 + t * 0.7) * 0.48;
-          // 阵风细浪：沿风向推进、幅度受 uGust 调制（一阵阵皱起海面）
-          a += sin(d * 0.24 - t * 2.3) * 0.42 * uGust;
-          a += sin(dot(p, perp) * 0.34 - t * 3.0) * 0.22 * uGust;
+          a += sin(d * 0.032 - t * 0.55) * 0.44;
+          a += sin(d * 0.083 + t * 0.82) * 0.20;
+          a += sin(dot(p, perp) * 0.065 + t * 0.42) * 0.14;
+          // 阵风只带出细微皱褶，风痕主要交给 fragment 做可视化。
+          a += sin(d * 0.21 - t * 1.7) * 0.08 * uGust;
+          a += sin(dot(p, perp) * 0.29 - t * 2.1) * 0.045 * uGust;
           return a;
         }
 
@@ -67,11 +67,14 @@ export class Sea {
 
           vWorld = world;
           vNormal = nrm;
-          vCrest = smoothstep(0.7, 1.6, h);
+          vCrest = smoothstep(0.34, 0.78, h);
           gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
         }
       `,
       fragmentShader: /* glsl */ `
+        uniform float uTime;
+        uniform float uGust;
+        uniform vec2 uWind;
         uniform vec3 uDeep;
         uniform vec3 uShallow;
         uniform vec3 uSky;
@@ -95,6 +98,15 @@ export class Sea {
           col += vec3(1.0, 0.97, 0.9) * spec * 0.7;
           // 浪尖泡沫
           col = mix(col, uFoam, vCrest * 0.5);
+          // 风痕：沿风向拉长、断续出现的浅色细纹，表达风吹过而不是大浪抬升。
+          vec2 perp = vec2(-uWind.y, uWind.x);
+          float along = dot(vWorld.xz, uWind);
+          float across = dot(vWorld.xz, perp);
+          float lane = 0.5 + 0.5 * sin(across * 0.22 + sin(along * 0.018 - uTime * 0.35) * 1.6);
+          float train = 0.5 + 0.5 * sin(along * 0.09 - uTime * 1.15);
+          float windTrace = smoothstep(0.80, 0.98, lane) * smoothstep(0.58, 0.96, train) * uGust;
+          col = mix(col, uFoam, windTrace * 0.16);
+          col += vec3(0.018, 0.035, 0.05) * windTrace;
           // 远处融进天空，地平线无缝
           float dist = length(uCam.xz - vWorld.xz);
           float horizon = smoothstep(uFade * 0.35, uFade, dist);
@@ -121,9 +133,9 @@ export class Sea {
     const d = x * w.x + z * w.y;
     const px = -w.y * x + w.x * z;
     return (
-      Math.sin(d * 0.045 - t * 0.9) * 0.95 +
-      Math.sin(d * 0.1 + t * 1.25) * 0.42 +
-      Math.sin(px * 0.075 + t * 0.7) * 0.34
+      Math.sin(d * 0.032 - t * 0.55) * 0.44 +
+      Math.sin(d * 0.083 + t * 0.82) * 0.20 +
+      Math.sin(px * 0.065 + t * 0.42) * 0.14
     );
   }
 

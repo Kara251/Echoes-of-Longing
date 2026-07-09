@@ -4,7 +4,7 @@ import * as THREE from 'three';
  * 钢铁大陆（可变化大陆）—— Decagrammaton 的大陆本体，正在沉没于海。
  *
  * 中心在宫殿正下方（世界原点 XZ），占地约为宫殿的三倍（半径 ≈ √3×）。
- * 算法生成：圆盘上密铺高低不一的钢铁台块 + 顶面细碎结构（符合原著
+ * 算法生成：圆盘上分区铺设高低不一的钢铁台块 + 顶面低密度结构（符合原著
  * 「可变化大陆」的不规则体素质感）。中心偏高、边缘低伏成滩，读作一块
  * 缓缓没入水面的大陆。整块随时间下沉（cut 驱动 group.position.y）。
  * InstancedMesh，形态由种子决定；下沉是连续位移，seek 安全。
@@ -18,7 +18,7 @@ const PANEL = 0x5f7183;
 export class Continent {
   constructor(
     scene,
-    { center = new THREE.Vector3(0, -70, 0), radius = 95, seed = 20260707, rings = 26 } = {}
+    { center = new THREE.Vector3(0, -70, 0), radius = 95, seed = 20260707, rings = 22 } = {}
   ) {
     this.scene = scene;
     this.group = new THREE.Group();
@@ -57,29 +57,35 @@ export class Continent {
       const r0 = (ri / rings) * radius;
       const r1 = ((ri + 1) / rings) * radius;
       const rMid = (r0 + r1) * 0.5;
+      const t = rMid / radius;
       const circumference = Math.PI * 2 * Math.max(rMid, 3);
-      const cells = Math.max(6, Math.round(circumference / 6.4));
+      const cells = Math.max(5, Math.round(circumference / 9.2));
       const top = profile(rMid);
 
       for (let ci = 0; ci < cells; ci++) {
-        if (ri > 2 && rnd() < 0.12 + (rMid / radius) * 0.35) continue; // 边缘更破碎
         const ang = (ci / cells) * Math.PI * 2 + signed() * 0.05;
+        const district = 0.5 + 0.5 * Math.sin(ang * 5.0 + Math.sin(rMid * 0.06) * 2.3);
+        const radialGap = Math.abs(Math.sin(ang * 6.0 + rMid * 0.035)) < 0.09 + t * 0.035;
+        const beltGap = Math.abs(Math.sin(rMid * 0.24 + Math.sin(ang * 3.0) * 1.1)) < 0.07;
+        const edgeBreak = ri > 2 && rnd() < 0.16 + t * 0.32;
+        if (district < 0.16 || radialGap || beltGap || edgeBreak) continue;
+
         const rr = rMid + signed() * (r1 - r0) * 0.35;
         const x = Math.cos(ang) * rr;
         const z = Math.sin(ang) * rr;
 
-        const plotW = (r1 - r0) * (0.7 + rnd() * 0.6);
+        const plotW = (r1 - r0) * (1.05 + rnd() * 1.05);
         const plotD = plotW * (0.7 + rnd() * 0.7);
-        const th = 6 + rnd() * 10; // 台块厚度（向下延伸）
+        const th = 5.5 + rnd() * 9; // 台块厚度（向下延伸）
         const topY = top + signed() * 1.6;
 
         const near = rnd() < 0.32;
         push(x, topY - th * 0.5, z, plotW, th, plotD, near ? WET : rnd() < 0.6 ? FACE : SIDE, 0.06);
 
         // 顶面台阶
-        if (rnd() < 0.62) {
-          const sw = plotW * (0.4 + rnd() * 0.4);
-          const sd = plotD * (0.4 + rnd() * 0.4);
+        if (rnd() < 0.42) {
+          const sw = plotW * (0.34 + rnd() * 0.34);
+          const sd = plotD * (0.34 + rnd() * 0.34);
           const sh = 0.8 + rnd() * 2.4;
           push(
             x + signed() * plotW * 0.2,
@@ -94,7 +100,8 @@ export class Continent {
         }
 
         // 顶面结构：敦实的分级楼块 / 屋顶机械面 / 低矮机库（无细针天线）
-        const detail = rMid < radius * 0.6 ? 1 + Math.floor(rnd() * 3) : Math.floor(rnd() * 2);
+        const core = rMid < radius * 0.48;
+        const detail = rnd() < (core ? 0.58 : 0.26) ? 1 + (core && rnd() < 0.22 ? 1 : 0) : 0;
         for (let d = 0; d < detail; d++) {
           const kind = rnd();
           const lx = x + signed() * plotW * 0.35;

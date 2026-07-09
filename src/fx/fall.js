@@ -21,7 +21,7 @@ const smoothstep = (a, b, x) => {
 export class FallingField {
   constructor(
     scene,
-    { seaY = -70, seed = 77213, bigStart = 22, bigEnd = 29.4, fineStart = 26.8, fineEnd = 32.7 } = {}
+    { seaY = -70, seed = 77213, bigStart = 22, bigEnd = 30.8, fineStart = 27.8, fineEnd = 32.6 } = {}
   ) {
     this.scene = scene;
     this.seaY = seaY;
@@ -85,64 +85,73 @@ export class FallingField {
     };
     const splitPoint = new THREE.Vector3();
 
-    const peelChildren = (parent) => {
-      const splitAt = Math.min(parent.tImpact - 0.85, parent.t0 + 1.05 + rnd() * 2.05);
+    const peelChildren = (parent, depth = 1, outer = false) => {
+      const splitAt = Math.min(
+        parent.tImpact - (outer ? 1.05 : 0.85),
+        parent.t0 + (outer ? 0.72 + rnd() * 1.55 : 1.05 + rnd() * 2.05)
+      );
       if (splitAt <= parent.t0 + 0.55) return;
 
       parent.splitAt = splitAt;
-      parent.splitLoss = 0.22 + rnd() * 0.2;
+      parent.splitLoss = outer ? 0.34 + rnd() * 0.24 : 0.22 + rnd() * 0.2;
       const age = splitAt - parent.t0;
       positionAt(parent, age, splitPoint);
 
-      const childN = 4 + Math.floor(rnd() * 8);
+      const outward = new THREE.Vector2(splitPoint.x - 14, splitPoint.z - 44);
+      if (outward.lengthSq() < 0.01) outward.set(signed(), signed());
+      outward.normalize();
+
+      const childN = outer ? 5 + Math.floor(rnd() * 7) : 4 + Math.floor(rnd() * 8);
       for (let i = 0; i < childN; i++) {
-        const t0 = splitAt + rnd() * 0.42;
-        const y0 = Math.max(seaY + 5.5, splitPoint.y + signed() * 1.2);
-        const g = 1.75 + rnd() * 1.15;
-        pushChunk({
+        const t0 = splitAt + rnd() * (outer ? 0.7 : 0.42);
+        const y0 = Math.max(seaY + (outer ? 9.5 : 5.5), splitPoint.y + signed() * (outer ? 2.4 : 1.2) + (outer ? 1.5 + rnd() * 3.5 : 0));
+        const g = outer ? 1.25 + rnd() * 0.78 : 1.75 + rnd() * 1.15;
+        const child = pushChunk({
           t0,
-          x: splitPoint.x + signed() * 1.25,
-          z: splitPoint.z + signed() * 1.25,
+          x: splitPoint.x + signed() * (outer ? 2.2 : 1.25),
+          z: splitPoint.z + signed() * (outer ? 2.2 : 1.25),
           y0,
-          vx: parent.vx + signed() * (0.36 + rnd() * 0.52),
-          vy: parent.vy + signed() * 0.36 - 0.12,
-          vz: parent.vz + signed() * (0.36 + rnd() * 0.52),
+          vx: parent.vx + signed() * (0.3 + rnd() * 0.48) + outward.x * (outer ? 0.42 + rnd() * 0.68 : 0),
+          vy: parent.vy + signed() * (outer ? 0.28 : 0.36) - (outer ? 0.04 : 0.12),
+          vz: parent.vz + signed() * (0.3 + rnd() * 0.48) + outward.y * (outer ? 0.42 + rnd() * 0.68 : 0),
           g,
-          sizeBase: 0.16 + rnd() * 0.5,
-          strength: 0.18 + rnd() * 0.24,
+          sizeBase: outer ? 0.2 + rnd() * (depth > 0 ? 0.54 : 0.28) : 0.16 + rnd() * 0.5,
+          strength: outer ? 0.2 + rnd() * 0.3 : 0.18 + rnd() * 0.24,
         });
+        if (outer && depth > 0 && rnd() < 0.36) peelChildren(child, depth - 1, true);
       }
     };
 
-    // 坠落点收拢到相机正视的近前海面（相机看向 ~(14,44)），入水反应更突出
+    // 22–28 收在近前；28s 后转到外围海面，避免分解坠落被近景大陆遮住。
     const spawnChunk = (t0, big) => {
+      const late = t0 >= 27.8;
       const ang = rnd() * Math.PI * 2;
-      const rr = 4 + rnd() * 42;
-      const x = 12 + Math.cos(ang) * rr;
-      const z = 34 + Math.sin(ang) * rr;
-      const y0 = seaY + (big ? 24 + rnd() * 36 : 16 + rnd() * 28);
-      const g = big ? 2.05 + rnd() * 1.05 : 2.25 + rnd() * 1.25;
+      const rr = late ? 36 + rnd() * 72 : 4 + rnd() * 42;
+      const x = (late ? 18 : 12) + Math.cos(ang) * rr;
+      const z = (late ? 60 : 34) + Math.sin(ang) * rr;
+      const y0 = seaY + (big ? (late ? 42 + rnd() * 52 : 24 + rnd() * 36) : (late ? 28 + rnd() * 38 : 16 + rnd() * 28));
+      const g = big ? (late ? 1.18 + rnd() * 0.74 : 2.05 + rnd() * 1.05) : (late ? 1.35 + rnd() * 0.82 : 2.25 + rnd() * 1.25);
       const chunk = pushChunk({
         t0,
         x,
         z,
         y0,
-        vx: signed() * (big ? 0.48 : 0.68),
-        vy: signed() * (big ? 0.22 : 0.34) - (big ? 0.1 : 0.02),
-        vz: signed() * (big ? 0.48 : 0.68),
+        vx: signed() * (big ? (late ? 0.72 : 0.48) : (late ? 0.84 : 0.68)),
+        vy: signed() * (big ? 0.22 : 0.34) - (big ? (late ? 0.02 : 0.1) : 0.02),
+        vz: signed() * (big ? (late ? 0.72 : 0.48) : (late ? 0.84 : 0.68)),
         g,
-        sizeBase: big ? 0.82 + rnd() * 1.46 : 0.17 + rnd() * 0.44,
-        strength: big ? 0.62 + rnd() * 0.28 : 0.22 + rnd() * 0.22,
+        sizeBase: big ? (late ? 1.02 + rnd() * 1.58 : 0.82 + rnd() * 1.46) : (late ? 0.22 + rnd() * 0.58 : 0.17 + rnd() * 0.44),
+        strength: big ? (late ? 0.66 + rnd() * 0.3 : 0.62 + rnd() * 0.28) : 0.22 + rnd() * 0.22,
       });
-      if (big && rnd() < 0.88) peelChildren(chunk);
+      if (big && rnd() < (late ? 0.96 : 0.88)) peelChildren(chunk, late ? 1 : 0, late);
     };
 
-    const bigN = 52;
+    const bigN = 64;
     for (let i = 0; i < bigN; i++) {
       const t0 = bigStart + (bigEnd - bigStart) * Math.pow(i / bigN, 1.05) + signed() * 0.25;
       spawnChunk(t0, true);
     }
-    const fineN = 150;
+    const fineN = 190;
     for (let i = 0; i < fineN; i++) {
       const t0 = fineStart + (fineEnd - fineStart) * (i / fineN) + signed() * 0.22;
       spawnChunk(t0, false);
