@@ -25,7 +25,7 @@ import { FallingField } from '../../fx/fall.js';
  */
 
 const SEA_Y = -70;
-const CONTINENT_BASE_Y = SEA_Y + 11.5;
+const CONTINENT_BASE_Y = SEA_Y + 24.5;
 
 /* ---- 相机关键帧（可调） ---- */
 const CAM = {
@@ -78,7 +78,7 @@ export class IntroSanctum extends Cut {
     this.sanctum = new Sanctum();
     stage.scene.add(this.sanctum.group);
     this.sea = new Sea(stage.scene, { y: SEA_Y });
-    // 大陆主体在镜头下潜时应明显高于水线；只有最低的边缘/底部贴水。
+    // 大陆起始应整体高于水线；沉没感来自贴近海面与极慢下沉，而不是开场半淹。
     this.continent = new Continent(stage.scene, { center: new THREE.Vector3(0, CONTINENT_BASE_Y, 0), radius: 95 });
     this.fall = new FallingField(stage.scene, { seaY: SEA_Y });
 
